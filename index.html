@@ -928,11 +928,17 @@
                             ← กลับไปหน้าแรก
                         </a>
                     </div>
-                    <div>
+                    <div style="flex: 1; text-align: center;">
                         <h1 id="projectTitle">โครงการใหม่</h1>
-                        <div class="subtitle">กำลังบันทึกอัตโนมัติ...</div>
+                        <div class="subtitle" id="saveStatus">
+                            <span id="saveStatusIcon">💾</span>
+                            <span id="saveStatusText">บันทึกอัตโนมัติเมื่อ: ไม่เคย</span>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn btn-success" onclick="saveAndBackToDashboard()" style="font-size: 0.9rem;">
+                            💾 บันทึกและกลับ
+                        </button>
                         <span id="userNameDisplay2" style="font-size: 0.9rem;"></span>
                         <button class="btn btn-danger" onclick="handleLogout()">🚪 ออกจากระบบ</button>
                     </div>
@@ -1361,8 +1367,8 @@
                         <button type="button" class="btn btn-secondary" onclick="previousStep()">
                             ← ย้อนกลับ
                         </button>
-                        <button type="button" class="btn btn-primary" onclick="backToDashboard()">
-                            🏠 กลับหน้าแรก
+                        <button type="button" class="btn btn-success" onclick="saveAndBackToDashboard()" style="margin-left: auto;">
+                            💾 บันทึกและกลับหน้าแรก
                         </button>
                     </div>
                 </div>
