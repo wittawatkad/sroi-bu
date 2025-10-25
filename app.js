@@ -5,7 +5,7 @@ let currentStep = 1;
 const totalSteps = 6;
 let stakeholders = [];
 let outcomes = [];
-let valuations = [];
+let sroiChart = null;
 
 // ========================================
 // MODAL FUNCTIONS
@@ -43,7 +43,6 @@ window.addEventListener('click', function(event) {
 // ========================================
 
 window.nextStep = function() {
-    console.log('nextStep called, current:', currentStep);
     if (currentStep < totalSteps) {
         currentStep++;
         updateStep();
@@ -51,7 +50,6 @@ window.nextStep = function() {
 };
 
 window.previousStep = function() {
-    console.log('previousStep called, current:', currentStep);
     if (currentStep > 1) {
         currentStep--;
         updateStep();
@@ -59,7 +57,6 @@ window.previousStep = function() {
 };
 
 window.goToStep = function(stepNumber) {
-    console.log('goToStep called:', stepNumber);
     if (stepNumber >= 1 && stepNumber <= totalSteps) {
         currentStep = stepNumber;
         updateStep();
@@ -67,8 +64,6 @@ window.goToStep = function(stepNumber) {
 };
 
 function updateStep() {
-    console.log('Updating to step:', currentStep);
-    
     const allSteps = document.querySelectorAll('.step-content');
     allSteps.forEach(content => {
         content.classList.remove('active');
@@ -79,9 +74,6 @@ function updateStep() {
     if (currentContent) {
         currentContent.classList.add('active');
         currentContent.style.display = 'block';
-        console.log('Showing step:', currentStep);
-    } else {
-        console.error('Step element not found:', `step${currentStep}`);
     }
     
     const stepButtons = document.querySelectorAll('.step');
@@ -101,11 +93,7 @@ function updateStep() {
     }
     
     if (nextBtn) {
-        if (currentStep === totalSteps) {
-            nextBtn.style.display = 'none';
-        } else {
-            nextBtn.style.display = 'inline-flex';
-        }
+        nextBtn.style.display = currentStep === totalSteps ? 'none' : 'inline-flex';
     }
     
     // Update tables based on current step
@@ -116,7 +104,7 @@ function updateStep() {
     } else if (currentStep === 4) {
         updateValuationTable();
     } else if (currentStep === 5) {
-        calculateAndShowResults();
+        // Just prepare the form - calculation happens on button click
     }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -363,32 +351,39 @@ window.saveValuation = function(outcomeId, field, value) {
     const outcome = outcomes.find(o => o.id === outcomeId);
     if (outcome) {
         outcome[field] = parseFloat(value) || 0;
-        console.log(`Saved ${field} = ${outcome[field]} for outcome:`, outcome.name);
     }
 };
 
 // ========================================
-// CALCULATION FUNCTIONS (STEP 5)
+// SROI CALCULATION FUNCTIONS (STEP 5)
 // ========================================
 
-function calculateAndShowResults() {
-    if (outcomes.length === 0) {
+window.calculateSROI = function() {
+    const investmentInput = document.getElementById('investmentAmount');
+    const investment = parseFloat(investmentInput.value) || 0;
+    
+    if (investment <= 0) {
+        alert('❌ กรุณากรอกต้นทุนการลงทุนที่มากกว่า 0');
+        investmentInput.focus();
         return;
     }
     
+    if (outcomes.length === 0) {
+        alert('❌ ไม่มีข้อมูลผลลัพธ์\nกรุณากลับไปเพิ่มข้อมูลใน Step 3 และ Step 4');
+        return;
+    }
+    
+    // Calculate results
     let totalValue = 0;
     let results = [];
     
     outcomes.forEach(outcome => {
-        // Calculate impact value
         const initialValue = (outcome.quantity || 0) * (outcome.unitValue || 0);
         const deadweightFactor = 1 - ((outcome.deadweight || 0) / 100);
         const attributionFactor = 1 - ((outcome.attribution || 0) / 100);
         const displacementFactor = 1 - ((outcome.displacement || 0) / 100);
         
         const netImpact = initialValue * deadweightFactor * attributionFactor * displacementFactor;
-        
-        // Calculate NPV (simplified - should use discount rate)
         const duration = outcome.duration || 1;
         const npv = netImpact * duration;
         
@@ -402,41 +397,165 @@ function calculateAndShowResults() {
         });
     });
     
-    // Update summary cards
-    const sroiRatio = document.getElementById('sroiRatio');
-    const netImpactEl = document.getElementById('netImpact');
-    const totalNPV = document.getElementById('totalNPV');
+    // Calculate SROI Ratio
+    const sroiRatio = investment > 0 ? (totalValue / investment) : 0;
+    const netSocialValue = totalValue - investment;
     
-    if (sroiRatio) sroiRatio.textContent = '0.00 : 1'; // Needs investment amount
-    if (netImpactEl) netImpactEl.textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
-    if (totalNPV) totalNPV.textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    // Update display
+    document.getElementById('sroiRatio').textContent = sroiRatio.toFixed(2) + ' : 1';
+    document.getElementById('investmentDisplay').textContent = '฿' + investment.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    document.getElementById('totalNPV').textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    document.getElementById('netSocialValue').textContent = '฿' + netSocialValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    
+    // Show results section
+    document.getElementById('resultsSection').style.display = 'block';
     
     // Update summary table
-    updateSummaryTable(results);
-}
+    updateSummaryTableWithResults(results);
+    
+    // Create chart
+    createSROIChart(investment, totalValue, results);
+    
+    // Show success toast
+    showToast('✅ คำนวณ SROI เรียบร้อยแล้ว!');
+    
+    // Scroll to results
+    setTimeout(() => {
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+};
 
-function updateSummaryTable(results) {
+function updateSummaryTableWithResults(results) {
     const tbody = document.getElementById('summaryTableBody');
     if (!tbody) return;
     
     if (results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">ไม่มีข้อมูล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">ไม่มีข้อมูล</td></tr>';
         return;
     }
     
     tbody.innerHTML = results.map(r => `
-        <tr>
-            <td>${r.outcome.stakeholder}</td>
-            <td>${r.outcome.name}</td>
-            <td>${r.outcome.type}</td>
-            <td>฿${r.initialValue.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
-            <td>${r.outcome.deadweight || 0}%</td>
-            <td>${r.outcome.attribution || 0}%</td>
-            <td>${r.outcome.displacement || 0}%</td>
-            <td>฿${r.netImpact.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
-            <td>฿${r.npv.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 12px;">${r.outcome.stakeholder}</td>
+            <td style="padding: 12px;">${r.outcome.name}</td>
+            <td style="padding: 12px;">
+                <span style="background: ${r.outcome.type === 'ผลกระทบเชิงบวก' ? '#d1fae5' : '#fee2e2'}; 
+                             padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">
+                    ${r.outcome.type}
+                </span>
+            </td>
+            <td style="padding: 12px; text-align: right; font-weight: 500;">
+                ฿${r.initialValue.toLocaleString('th-TH', {maximumFractionDigits: 0})}
+            </td>
+            <td style="padding: 12px; text-align: center;">${r.outcome.deadweight || 0}%</td>
+            <td style="padding: 12px; text-align: center;">${r.outcome.attribution || 0}%</td>
+            <td style="padding: 12px; text-align: center;">${r.outcome.displacement || 0}%</td>
+            <td style="padding: 12px; text-align: right; font-weight: 500; color: #059669;">
+                ฿${r.netImpact.toLocaleString('th-TH', {maximumFractionDigits: 0})}
+            </td>
+            <td style="padding: 12px; text-align: right; font-weight: 600; color: #2563eb;">
+                ฿${r.npv.toLocaleString('th-TH', {maximumFractionDigits: 0})}
+            </td>
         </tr>
     `).join('');
+}
+
+function createSROIChart(investment, totalValue, results) {
+    const ctx = document.getElementById('sroiChart');
+    if (!ctx) return;
+    
+    if (sroiChart) {
+        sroiChart.destroy();
+    }
+    
+    const labels = results.map(r => r.outcome.name);
+    const npvData = results.map(r => r.npv);
+    const initialData = results.map(r => r.initialValue);
+    
+    sroiChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'มูลค่าเริ่มต้น',
+                    data: initialData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'NPV (หลังปรับค่า)',
+                    data: npvData,
+                    backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'เปรียบเทียบมูลค่าเริ่มต้นและ NPV ของแต่ละผลลัพธ์',
+                    font: {
+                        size: 16,
+                        family: 'Sarabun'
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            family: 'Sarabun',
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '฿' + context.parsed.y.toLocaleString('th-TH', {maximumFractionDigits: 0});
+                            return label;
+                        }
+                    },
+                    bodyFont: {
+                        family: 'Sarabun'
+                    },
+                    titleFont: {
+                        family: 'Sarabun'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '฿' + value.toLocaleString('th-TH');
+                        },
+                        font: {
+                            family: 'Sarabun'
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            family: 'Sarabun'
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 // ========================================
@@ -712,7 +831,7 @@ function initializeAuth() {
 // INITIALIZE APP
 // ========================================
 
-console.log('App.js loaded');
+console.log('App.js loaded with SROI calculation features');
 
 if (window.auth) {
     initializeAuth();
