@@ -1120,7 +1120,7 @@
         console.log('Generate PDF');
     }
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK - Initialize FIRST -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
       import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -1134,11 +1134,17 @@
         appId: "1:467289509127:web:afc1a93643cbddce0849a2"
       };
       
-      const app = initializeApp(firebaseConfig);
-      window.auth = getAuth(app);
+      // Initialize Firebase and make globally available
+      window.firebaseApp = initializeApp(firebaseConfig);
+      window.auth = getAuth(window.firebaseApp);
+      
+      console.log('✅ Firebase initialized successfully');
+      
+      // Dispatch event to let app.js know Firebase is ready
+      window.dispatchEvent(new Event('firebaseReady'));
     </script>
     
-    <!-- Main App Script -->
+    <!-- Main App Script - Load AFTER Firebase -->
     <script src="app.js"></script>
     
 </body>
