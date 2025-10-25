@@ -1,1363 +1,1497 @@
-// ========================================
-// GLOBAL VARIABLES
-// ========================================
-let currentStep = 1;
-const totalSteps = 6;
-let stakeholders = [];
-let outcomes = [];
-let sroiChart = null;
-let currentProjectId = null;
-let currentUser = null;
-let autoSaveTimeout = null;
-
-// Step completion tracking
-let completedSteps = {
-    1: false,
-    2: false,
-    3: false,
-    4: false,
-    5: false,
-    6: false
-};
-
-// ========================================
-// FIREBASE FIRESTORE FUNCTIONS
-// ========================================
-
-async function saveProjectData() {
-    if (!currentUser || !currentProjectId) return;
-
-    // Clear previous timeout
-    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
-
-    // Update UI to show saving status
-    updateSaveStatus('saving');
-
-    // Set new timeout for auto-save (debounce)
-    autoSaveTimeout = setTimeout(async () => {
-        try {
-            const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-            const projectData = {
-                userId: currentUser.uid,
-                projectName: document.getElementById('projectName')?.value || 'โครงการใหม่',
-                organization: document.getElementById('organization')?.value || '',
-                duration: parseInt(document.getElementById('duration')?.value) || 1,
-                startYear: parseInt(document.getElementById('startYear')?.value) || new Date().getFullYear(),
-                objective: document.getElementById('objective')?.value || '',
-                totalCost: parseFloat(document.getElementById('totalCost')?.value) || 0,
-                discountRate: parseFloat(document.getElementById('discountRate')?.value) || 3.5,
-                stakeholders: stakeholders,
-                outcomes: outcomes,
-                completedSteps: completedSteps,
-                lastUpdated: new Date().toISOString(),
-                updatedAt: new Date()
-            };
-
-            const projectRef = doc(window.db, 'projects', currentProjectId);
-            await setDoc(projectRef, projectData, { merge: true });
-
-            console.log('✅ Project auto-saved');
-            updateProjectTitle();
-            updateSaveStatus('saved');
-        } catch (error) {
-            console.error('Error saving project:', error);
-            updateSaveStatus('error');
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SROI Calculator - ระบบคำนวณผลตอบแทนทางสังคมจากการลงทุน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            /* Bangkok University Colors */
+            --color-primary: #1e3a8a;
+            --color-primary-light: #3b82f6;
+            --color-secondary: #f59e0b;
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+            --color-info: #3b82f6;
+            --color-light: #f8fafc;
+            --color-dark: #1e293b;
+            --color-border: #e2e8f0;
+            --color-text: #334155;
+            --color-text-light: #64748b;
+            
+            /* Spacing */
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --space-2xl: 3rem;
+            
+            /* Border radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
         }
-    }, 1000); // Save after 1 second of no changes
-}
 
-function updateSaveStatus(status) {
-    const statusIcon = document.getElementById('saveStatusIcon');
-    const statusText = document.getElementById('saveStatusText');
-    
-    if (!statusIcon || !statusText) return;
-    
-    const now = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-    
-    switch(status) {
-        case 'saving':
-            statusIcon.textContent = '⏳';
-            statusText.textContent = 'กำลังบันทึก...';
-            break;
-        case 'saved':
-            statusIcon.textContent = '✅';
-            statusText.textContent = `บันทึกล่าสุด: ${now}`;
-            break;
-        case 'error':
-            statusIcon.textContent = '❌';
-            statusText.textContent = 'บันทึกไม่สำเร็จ';
-            break;
-    }
-}
-
-async function saveAndBackToDashboard() {
-    if (!currentUser || !currentProjectId) {
-        backToDashboard();
-        return;
-    }
-
-    try {
-        // Force save immediately
-        showToast('⏳ กำลังบันทึกโครงการ...');
-        
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-        const projectData = {
-            userId: currentUser.uid,
-            projectName: document.getElementById('projectName')?.value || 'โครงการใหม่',
-            organization: document.getElementById('organization')?.value || '',
-            duration: parseInt(document.getElementById('duration')?.value) || 1,
-            startYear: parseInt(document.getElementById('startYear')?.value) || new Date().getFullYear(),
-            objective: document.getElementById('objective')?.value || '',
-            totalCost: parseFloat(document.getElementById('totalCost')?.value) || 0,
-            discountRate: parseFloat(document.getElementById('discountRate')?.value) || 3.5,
-            stakeholders: stakeholders,
-            outcomes: outcomes,
-            completedSteps: completedSteps,
-            lastUpdated: new Date().toISOString(),
-            updatedAt: new Date()
-        };
-
-        const projectRef = doc(window.db, 'projects', currentProjectId);
-        await setDoc(projectRef, projectData, { merge: true });
-
-        console.log('✅ Project saved successfully');
-        showToast('✅ บันทึกโครงการสำเร็จ!');
-        
-        // Wait a bit then go back
-        setTimeout(() => {
-            backToDashboard();
-        }, 500);
-        
-    } catch (error) {
-        console.error('Error saving project:', error);
-        showToast('❌ เกิดข้อผิดพลาดในการบันทึก');
-    }
-}
-
-// Make it globally accessible
-window.saveAndBackToDashboard = saveAndBackToDashboard;
-
-async function loadProjectData(projectId) {
-    try {
-        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-        const projectRef = doc(window.db, 'projects', projectId);
-        const projectSnap = await getDoc(projectRef);
-
-        if (projectSnap.exists()) {
-            const data = projectSnap.data();
-
-            // Load basic info
-            document.getElementById('projectName').value = data.projectName || '';
-            document.getElementById('organization').value = data.organization || '';
-            document.getElementById('duration').value = data.duration || 1;
-            document.getElementById('startYear').value = data.startYear || new Date().getFullYear();
-            document.getElementById('objective').value = data.objective || '';
-            document.getElementById('totalCost').value = data.totalCost || 0;
-            document.getElementById('discountRate').value = data.discountRate || 3.5;
-
-            // Load stakeholders and outcomes
-            stakeholders = data.stakeholders || [];
-            outcomes = data.outcomes || [];
-            completedSteps = data.completedSteps || {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
-
-            // Update UI
-            updateStakeholderTable();
-            updateOutcomeTable();
-            updateValuationTable();
-            updateAdjustmentTable();
-            updateProjectTitle();
-            updateStepIndicators();
-            updateDisplayCost();
-
-            console.log('✅ Project data loaded');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    } catch (error) {
-        console.error('Error loading project:', error);
-    }
-}
 
-async function loadUserProjects() {
-    try {
-        const { collection, query, where, getDocs, orderBy } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--color-text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
 
-        const projectsRef = collection(window.db, 'projects');
-        const q = query(
-            projectsRef, 
-            where('userId', '==', currentUser.uid),
-            orderBy('updatedAt', 'desc')
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const projects = [];
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-md);
+        }
 
-        querySnapshot.forEach((doc) => {
-            projects.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+        .header {
+            background: var(--color-primary);
+            color: white;
+            padding: var(--space-lg) 0;
+            box-shadow: var(--shadow-lg);
+        }
 
-        displayProjects(projects);
-    } catch (error) {
-        console.error('Error loading projects:', error);
-    }
-}
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
 
-function displayProjects(projects) {
-    const grid = document.getElementById('projectsGrid');
-    
-    // Keep the "New Project" card
-    const newProjectCard = `
-        <div class="project-card new-project-card" id="newProjectCard">
-            <div style="font-size: 3rem; margin-bottom: 16px;">➕</div>
-            <div>สร้างโครงการใหม่</div>
-        </div>
-    `;
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
 
-    const projectCards = projects.map(project => {
-        const progress = calculateProjectProgress(project);
-        const lastUpdated = formatDate(project.lastUpdated);
+        .header .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
 
-        return `
-            <div class="project-card" data-project-id="${project.id}">
-                <div class="project-card-header">
-                    <div>
-                        <div class="project-card-title">${project.projectName || 'โครงการไม่มีชื่อ'}</div>
-                        <div class="project-card-meta">
-                            ${project.organization || 'ไม่ระบุหน่วยงาน'} • อัพเดท ${lastUpdated}
-                        </div>
+        .developer-credit {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-light);
+        }
+
+        .btn-secondary {
+            background: var(--color-light);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-danger {
+            background: var(--color-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-md);
+        }
+
+        .login-card {
+            background: white;
+            padding: var(--space-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            color: var(--color-primary);
+            margin-bottom: var(--space-lg);
+            font-size: 1.8rem;
+            font-weight: 600;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .form-group {
+            margin-bottom: var(--space-md);
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: var(--space-sm);
+            font-weight: 500;
+            color: var(--color-text);
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn-google {
+            background: white;
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+            width: 100%;
+            justify-content: center;
+            padding: var(--space-sm) var(--space-md);
+            margin-top: var(--space-md);
+            font-weight: 500;
+        }
+
+        .btn-google:hover {
+            background: var(--color-light);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: var(--space-lg) 0;
+            color: var(--color-text-light);
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .divider span {
+            padding: 0 var(--space-md);
+            font-size: 0.9rem;
+        }
+
+        .toggle-form {
+            margin-top: var(--space-lg);
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        .toggle-form a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            display: none;
+            padding: var(--space-xl) 0;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .dashboard-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .project-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .project-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+            border-color: var(--color-primary);
+        }
+
+        .project-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: var(--space-md);
+        }
+
+        .project-card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .project-card-meta {
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+        }
+
+        .project-card-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .project-card-progress {
+            margin-top: var(--space-md);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--color-border);
+        }
+
+        .progress-label {
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+            margin-bottom: var(--space-xs);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--color-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--color-success);
+            transition: width 0.3s ease;
+        }
+
+        .new-project-card {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .new-project-card:hover {
+            border-color: var(--color-primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -6px rgba(30, 58, 138, 0.3);
+        }
+
+        .new-project-card:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -4px rgba(30, 58, 138, 0.3);
+        }
+
+        .new-project-card * {
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Main App */
+        .main-app {
+            display: none;
+            padding: var(--space-xl) 0;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .app-header {
+            background: var(--color-primary);
+            color: white;
+            padding: var(--space-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-header h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .steps-nav {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--space-lg);
+            background: var(--color-light);
+            border-bottom: 1px solid var(--color-border);
+            overflow-x: auto;
+            gap: var(--space-sm);
+        }
+
+        .step {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            padding: var(--space-sm);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .step:hover {
+            background: white;
+        }
+
+        .step.active {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .step.completed {
+            background: var(--color-success);
+            color: white;
+            border-color: var(--color-success);
+        }
+
+        .step.completed:hover {
+            background: #059669;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            border-radius: 50%;
+            background: white;
+            color: var(--color-primary);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .step.active .step-number {
+            background: white;
+            color: var(--color-primary);
+        }
+
+        .step.completed .step-number {
+            background: white;
+            color: var(--color-success);
+        }
+
+        .step-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .step-content {
+            display: none;
+            padding: var(--space-2xl);
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .step-header {
+            margin-bottom: var(--space-xl);
+        }
+
+        .step-title-main {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .step-description {
+            color: var(--color-text-light);
+            font-size: 1rem;
+        }
+
+        .section {
+            background: var(--color-light);
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: var(--space-md);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: var(--space-md);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        th {
+            background: var(--color-primary);
+            color: white;
+            padding: var(--space-md);
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: var(--space-md);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: var(--color-light);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+            padding-top: var(--space-xl);
+            border-top: 1px solid var(--color-border);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--color-text-light);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            color: var(--color-danger);
+        }
+
+        .modal-body {
+            padding: var(--space-lg);
+        }
+
+        .modal-footer {
+            padding: var(--space-lg);
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+        }
+
+        .modal-form-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .modal-form-group label {
+            display: block;
+            margin-bottom: var(--space-sm);
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .modal-form-group input,
+        .modal-form-group select,
+        .modal-form-group textarea {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .modal-form-group small {
+            display: block;
+            margin-top: var(--space-xs);
+            color: var(--color-text-light);
+            font-size: 0.85rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            padding: var(--space-md) var(--space-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: var(--space-md);
+            border-left: 4px solid var(--color-success);
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: var(--space-lg) 0;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            color: white;
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            margin: var(--space-lg) 0;
+        }
+
+        .result-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: var(--space-md) 0;
+        }
+
+        .result-label {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin: var(--space-lg) 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--color-primary);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .icon-btn {
+            padding: var(--space-xs) var(--space-sm);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .steps-nav {
+                flex-direction: column;
+            }
+
+            .step {
+                min-width: 100%;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .back-to-dashboard {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            color: white;
+            text-decoration: none;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            transition: background 0.2s ease;
+        }
+
+        .back-to-dashboard:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Screen -->
+    <div id="authScreen" class="login-container">
+        <div class="login-card">
+            <!-- Login Form -->
+            <div id="loginForm">
+                <h2>🎯 SROI Calculator</h2>
+                <p style="margin-bottom: 24px; color: #64748b;">ระบบคำนวณผลตอบแทนทางสังคมจากการลงทุน</p>
+                
+                <div id="loginAlert"></div>
+                
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" id="loginEmail" class="form-control" required placeholder="example@bu.ac.th">
                     </div>
-                    <button class="btn btn-danger icon-btn" data-delete-id="${project.id}" title="ลบโครงการ">
-                        🗑️
+                    
+                    <div class="form-group">
+                        <label class="form-label">รหัสผ่าน</label>
+                        <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 16px;">
+                        🚀 เข้าสู่ระบบ
                     </button>
+                </form>
+                
+                <div class="divider">
+                    <span>หรือ</span>
                 </div>
-                <div class="project-card-progress">
-                    <div class="progress-label">ความคืบหน้า ${progress}%</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress}%"></div>
+                
+                <button type="button" class="btn btn-google" onclick="handleGoogleSignIn()">
+                    <svg width="18" height="18" viewBox="0 0 18 18">
+                        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                        <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+                        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+                    </svg>
+                    เข้าสู่ระบบด้วย Google
+                </button>
+                
+                <div class="toggle-form">
+                    ยังไม่มีบัญชี? <a onclick="toggleForm()">สมัครสมาชิก</a>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" style="display: none;">
+                <h2>📝 สมัครสมาชิก</h2>
+                <p style="margin-bottom: 24px; color: #64748b;">สร้างบัญชีใหม่</p>
+                
+                <div id="registerAlert"></div>
+                
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อ-นามสกุล</label>
+                        <input type="text" id="registerName" class="form-control" required placeholder="ชื่อของคุณ">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" id="registerEmail" class="form-control" required placeholder="example@bu.ac.th">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">หน่วยงาน/องค์กร (ถ้ามี)</label>
+                        <input type="text" id="registerOrganization" class="form-control" placeholder="มหาวิทยาลัยกรุงเทพ">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center; margin-top: 16px;">
+                        ✨ สมัครสมาชิก
+                    </button>
+                </form>
+                
+                <div class="toggle-form" style="margin-top: 24px;">
+                    มีบัญชีอยู่แล้ว? <a onclick="toggleForm()">เข้าสู่ระบบ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen">
+        <div class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div>
+                        <h1>🎯 SROI Calculator Dashboard</h1>
+                        <div class="subtitle">จัดการโครงการของคุณ</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span id="userNameDisplay" style="font-size: 0.9rem;"></span>
+                        <button class="btn btn-danger" onclick="handleLogout()">🚪 ออกจากระบบ</button>
                     </div>
                 </div>
             </div>
-        `;
-    }).join('');
-
-    grid.innerHTML = newProjectCard + projectCards;
-
-    // Add event listeners after DOM is updated
-    setTimeout(() => {
-        // New project card click handler
-        const newCard = document.getElementById('newProjectCard');
-        if (newCard) {
-            console.log('Attaching click handler to new project card');
-            newCard.addEventListener('click', function(e) {
-                console.log('New project card clicked!');
-                e.preventDefault();
-                e.stopPropagation();
-                window.createNewProject();
-            });
-        }
-
-        // Existing project cards click handlers
-        document.querySelectorAll('.project-card[data-project-id]').forEach(card => {
-            const projectId = card.getAttribute('data-project-id');
-            card.addEventListener('click', function(e) {
-                // Don't trigger if clicking delete button
-                if (e.target.closest('[data-delete-id]')) {
-                    return;
-                }
-                console.log('Opening project:', projectId);
-                window.openProject(projectId);
-            });
-        });
-
-        // Delete button handlers
-        document.querySelectorAll('[data-delete-id]').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const projectId = this.getAttribute('data-delete-id');
-                console.log('Deleting project:', projectId);
-                window.deleteProject(projectId);
-            });
-        });
-    }, 100);
-}
-
-function calculateProjectProgress(project) {
-    if (!project.completedSteps) return 0;
-    
-    const completed = Object.values(project.completedSteps).filter(v => v === true).length;
-    return Math.round((completed / totalSteps) * 100);
-}
-
-function formatDate(dateString) {
-    if (!dateString) return 'ไม่ทราบ';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.round(diffMs / 60000);
-    const diffHours = Math.round(diffMs / 3600000);
-    const diffDays = Math.round(diffMs / 86400000);
-
-    if (diffMins < 1) return 'เมื่อสักครู่';
-    if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
-    if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
-    if (diffDays < 7) return `${diffDays} วันที่แล้ว`;
-    
-    return date.toLocaleDateString('th-TH');
-}
-
-async function createNewProject() {
-    console.log('createNewProject called');
-    console.log('currentUser:', currentUser);
-    
-    if (!currentUser) {
-        alert('❌ กรุณาเข้าสู่ระบบก่อน');
-        return;
-    }
-
-    try {
-        console.log('Creating new project...');
-        const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-        const projectData = {
-            userId: currentUser.uid,
-            projectName: 'โครงการใหม่',
-            organization: '',
-            duration: 1,
-            startYear: new Date().getFullYear(),
-            objective: '',
-            totalCost: 0,
-            discountRate: 3.5,
-            stakeholders: [],
-            outcomes: [],
-            completedSteps: {1: false, 2: false, 3: false, 4: false, 5: false, 6: false},
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastUpdated: new Date().toISOString()
-        };
-
-        const docRef = await collection(window.db, 'projects');
-        const newDoc = await addDoc(docRef, projectData);
-
-        console.log('Project created with ID:', newDoc.id);
-
-        currentProjectId = newDoc.id;
-        stakeholders = [];
-        outcomes = [];
-        completedSteps = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
-
-        showMainApp();
-        showToast('✅ สร้างโครงการใหม่สำเร็จ!');
-    } catch (error) {
-        console.error('Error creating project:', error);
-        alert('เกิดข้อผิดพลาดในการสร้างโครงการ: ' + error.message);
-    }
-}
-
-// Make it globally accessible
-window.createNewProject = createNewProject;
-
-async function openProject(projectId) {
-    currentProjectId = projectId;
-    await loadProjectData(projectId);
-    showMainApp();
-}
-
-// Make it globally accessible
-window.openProject = openProject;
-
-async function deleteProject(projectId) {
-    if (!confirm('คุณต้องการลบโครงการนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
-        return;
-    }
-
-    try {
-        const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-        const projectRef = doc(window.db, 'projects', projectId);
-        await deleteDoc(projectRef);
-
-        showToast('✅ ลบโครงการสำเร็จ');
-        loadUserProjects();
-    } catch (error) {
-        console.error('Error deleting project:', error);
-        alert('เกิดข้อผิดพลาดในการลบโครงการ: ' + error.message);
-    }
-}
-
-// Make it globally accessible
-window.deleteProject = deleteProject;
-
-async function backToDashboard() {
-    // Save before going back if there's a current project
-    if (currentProjectId && currentUser) {
-        try {
-            showToast('⏳ กำลังบันทึกโครงการ...');
-            
-            const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-
-            const projectData = {
-                userId: currentUser.uid,
-                projectName: document.getElementById('projectName')?.value || 'โครงการใหม่',
-                organization: document.getElementById('organization')?.value || '',
-                duration: parseInt(document.getElementById('duration')?.value) || 1,
-                startYear: parseInt(document.getElementById('startYear')?.value) || new Date().getFullYear(),
-                objective: document.getElementById('objective')?.value || '',
-                totalCost: parseFloat(document.getElementById('totalCost')?.value) || 0,
-                discountRate: parseFloat(document.getElementById('discountRate')?.value) || 3.5,
-                stakeholders: stakeholders,
-                outcomes: outcomes,
-                completedSteps: completedSteps,
-                lastUpdated: new Date().toISOString(),
-                updatedAt: new Date()
-            };
-
-            const projectRef = doc(window.db, 'projects', currentProjectId);
-            await setDoc(projectRef, projectData, { merge: true });
-
-            console.log('✅ Project saved before returning to dashboard');
-        } catch (error) {
-            console.error('Error saving project:', error);
-        }
-    }
-    
-    document.getElementById('mainApp').style.display = 'none';
-    document.getElementById('dashboardScreen').style.display = 'block';
-    document.getElementById('dashboardContainer').style.display = 'block';
-    
-    currentProjectId = null;
-    currentStep = 1;
-    
-    loadUserProjects();
-}
-
-// Make it globally accessible
-window.backToDashboard = backToDashboard;
-
-function showMainApp() {
-    document.getElementById('authScreen').style.display = 'none';
-    document.getElementById('dashboardScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    
-    currentStep = 1;
-    setTimeout(() => updateStep(), 100);
-}
-
-function updateProjectTitle() {
-    const projectName = document.getElementById('projectName')?.value || 'โครงการใหม่';
-    const titleElement = document.getElementById('projectTitle');
-    if (titleElement) {
-        titleElement.textContent = projectName;
-    }
-}
-
-function updateDisplayCost() {
-    const totalCost = parseFloat(document.getElementById('totalCost')?.value) || 0;
-    const displayElement = document.getElementById('displayCost');
-    if (displayElement) {
-        displayElement.textContent = '฿ ' + totalCost.toLocaleString();
-    }
-}
-
-// ========================================
-// STEP COMPLETION TRACKING
-// ========================================
-
-function checkStepCompletion(stepNumber) {
-    let isComplete = false;
-
-    switch(stepNumber) {
-        case 1:
-            const projectName = document.getElementById('projectName')?.value;
-            const duration = document.getElementById('duration')?.value;
-            const totalCost = document.getElementById('totalCost')?.value;
-            isComplete = projectName && duration && totalCost && parseFloat(totalCost) > 0;
-            break;
-        case 2:
-            isComplete = stakeholders.length > 0;
-            break;
-        case 3:
-            isComplete = outcomes.length > 0;
-            break;
-        case 4:
-            isComplete = outcomes.every(o => o.quantity > 0 && o.unitValue > 0 && o.duration > 0);
-            break;
-        case 5:
-            const discountRate = document.getElementById('discountRate')?.value;
-            isComplete = discountRate && parseFloat(discountRate) >= 0;
-            break;
-        case 6:
-            isComplete = true; // Report step is always complete once reached
-            break;
-    }
-
-    completedSteps[stepNumber] = isComplete;
-    updateStepIndicators();
-    saveProjectData();
-}
-
-function updateStepIndicators() {
-    for (let i = 1; i <= totalSteps; i++) {
-        const stepElement = document.querySelectorAll('.step')[i - 1];
-        if (stepElement) {
-            if (completedSteps[i]) {
-                stepElement.classList.add('completed');
-            } else {
-                stepElement.classList.remove('completed');
-            }
-        }
-    }
-}
-
-// ========================================
-// MODAL FUNCTIONS
-// ========================================
-
-window.openModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-};
-
-window.closeModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = 'auto';
-        
-        const form = modal.querySelector('form');
-        if (form) {
-            form.reset();
-        }
-    }
-};
-
-window.addEventListener('click', function(event) {
-    if (event.target.classList.contains('modal')) {
-        closeModal(event.target.id);
-    }
-});
-
-// ========================================
-// STEP NAVIGATION FUNCTIONS
-// ========================================
-
-window.nextStep = function() {
-    checkStepCompletion(currentStep);
-    
-    if (currentStep < totalSteps) {
-        currentStep++;
-        updateStep();
-    }
-};
-
-window.previousStep = function() {
-    if (currentStep > 1) {
-        currentStep--;
-        updateStep();
-    }
-};
-
-window.goToStep = function(stepNumber) {
-    if (stepNumber >= 1 && stepNumber <= totalSteps) {
-        checkStepCompletion(currentStep);
-        currentStep = stepNumber;
-        updateStep();
-    }
-};
-
-function updateStep() {
-    // Hide all steps
-    const allSteps = document.querySelectorAll('.step-content');
-    allSteps.forEach(content => {
-        content.classList.remove('active');
-        content.style.display = 'none';
-    });
-    
-    // Show current step
-    const currentContent = document.getElementById(`step${currentStep}`);
-    if (currentContent) {
-        currentContent.classList.add('active');
-        currentContent.style.display = 'block';
-    }
-    
-    // Update step indicators
-    const stepButtons = document.querySelectorAll('.step');
-    stepButtons.forEach((step, index) => {
-        if (index + 1 === currentStep) {
-            step.classList.add('active');
-        } else {
-            step.classList.remove('active');
-        }
-    });
-    
-    // Update tables based on current step
-    if (currentStep === 2) {
-        updateStakeholderTable();
-    } else if (currentStep === 3) {
-        updateOutcomeTable();
-    } else if (currentStep === 4) {
-        updateValuationTable();
-    } else if (currentStep === 5) {
-        updateAdjustmentTable();
-        updateDisplayCost();
-    }
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ========================================
-// STAKEHOLDER FUNCTIONS
-// ========================================
-
-window.addStakeholder = function() {
-    openModal('stakeholderModal');
-};
-
-window.saveStakeholder = function() {
-    const name = document.getElementById('stakeholderName').value.trim();
-    const count = document.getElementById('stakeholderCount').value;
-    const type = document.getElementById('stakeholderType').value;
-    const description = document.getElementById('stakeholderDescription').value.trim();
-    
-    if (!name || !count || !type) {
-        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
-        return;
-    }
-    
-    const stakeholder = {
-        id: Date.now(),
-        name: name,
-        count: parseInt(count),
-        type: type,
-        description: description
-    };
-    
-    stakeholders.push(stakeholder);
-    updateStakeholderTable();
-    updateOutcomeStakeholderOptions();
-    closeModal('stakeholderModal');
-    checkStepCompletion(2);
-    
-    showToast('✅ เพิ่มผู้มีส่วนได้ส่วนเสียสำเร็จ!');
-    saveProjectData();
-};
-
-window.deleteStakeholder = function(id) {
-    if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
-        stakeholders = stakeholders.filter(s => s.id !== id);
-        updateStakeholderTable();
-        updateOutcomeStakeholderOptions();
-        checkStepCompletion(2);
-        showToast('✅ ลบข้อมูลสำเร็จ');
-        saveProjectData();
-    }
-};
-
-function updateStakeholderTable() {
-    const tbody = document.getElementById('stakeholderTableBody');
-    if (!tbody) return;
-    
-    if (stakeholders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">ยังไม่มีข้อมูล (คลิก "เพิ่มกลุ่มใหม่" เพื่อเริ่มต้น)</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = stakeholders.map(s => `
-        <tr>
-            <td>${s.name}</td>
-            <td>${s.count.toLocaleString()}</td>
-            <td><span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${s.type}</span></td>
-            <td>${s.description || '-'}</td>
-            <td>
-                <button type="button" class="btn btn-danger icon-btn" onclick="deleteStakeholder(${s.id})" title="ลบ">
-                    🗑️
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// ========================================
-// OUTCOME FUNCTIONS
-// ========================================
-
-window.addOutcome = function() {
-    if (stakeholders.length === 0) {
-        alert('❌ กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
-        return;
-    }
-    
-    updateOutcomeStakeholderOptions();
-    openModal('outcomeModal');
-};
-
-function updateOutcomeStakeholderOptions() {
-    const select = document.getElementById('outcomeStakeholder');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">-- เลือกกลุ่ม --</option>' +
-        stakeholders.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-}
-
-window.saveOutcome = function() {
-    const stakeholder = document.getElementById('outcomeStakeholder').value;
-    const name = document.getElementById('outcomeName').value.trim();
-    const type = document.getElementById('outcomeType').value;
-    const indicator = document.getElementById('outcomeIndicator').value.trim();
-    
-    if (!stakeholder || !name || !type || !indicator) {
-        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
-        return;
-    }
-    
-    const outcome = {
-        id: Date.now(),
-        stakeholder: stakeholder,
-        name: name,
-        type: type,
-        indicator: indicator,
-        quantity: 0,
-        unitValue: 0,
-        deadweight: 0,
-        attribution: 0,
-        displacement: 0,
-        dropoff: 0,
-        duration: 1
-    };
-    
-    outcomes.push(outcome);
-    updateOutcomeTable();
-    closeModal('outcomeModal');
-    checkStepCompletion(3);
-    
-    showToast('✅ เพิ่มผลลัพธ์สำเร็จ!');
-    saveProjectData();
-};
-
-window.deleteOutcome = function(id) {
-    if (confirm('คุณต้องการลบผลลัพธ์นี้หรือไม่?')) {
-        outcomes = outcomes.filter(o => o.id !== id);
-        updateOutcomeTable();
-        updateValuationTable();
-        checkStepCompletion(3);
-        showToast('✅ ลบผลลัพธ์สำเร็จ');
-        saveProjectData();
-    }
-};
-
-function updateOutcomeTable() {
-    const tbody = document.getElementById('outcomeTableBody');
-    if (!tbody) return;
-    
-    if (outcomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">ยังไม่มีข้อมูล (คลิก "เพิ่มผลลัพธ์" เพื่อเริ่มต้น)</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = outcomes.map(o => {
-        const typeIcon = o.type === 'ผลกระทบเชิงบวก' ? '✅' : '⚠️';
-        return `
-            <tr>
-                <td>${o.stakeholder}</td>
-                <td>${o.name}</td>
-                <td><span style="padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${typeIcon} ${o.type}</span></td>
-                <td>${o.indicator}</td>
-                <td>
-                    <button type="button" class="btn btn-danger icon-btn" onclick="deleteOutcome(${o.id})" title="ลบ">
-                        🗑️
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// ========================================
-// VALUATION FUNCTIONS
-// ========================================
-
-function updateValuationTable() {
-    const tbody = document.getElementById('valuationTableBody');
-    if (!tbody) return;
-    
-    if (outcomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">ยังไม่มีข้อมูล (กรุณาเพิ่มผลลัพธ์ในขั้นตอนที่ 3)</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = outcomes.map(o => {
-        const totalValue = (o.quantity || 0) * (o.unitValue || 0);
-        return `
-            <tr>
-                <td>${o.name}</td>
-                <td>${o.stakeholder}</td>
-                <td>
-                    <input type="number" 
-                           value="${o.quantity || 0}" 
-                           min="0"
-                           style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                           onchange="updateOutcomeValue(${o.id}, 'quantity', this.value)">
-                </td>
-                <td>
-                    <input type="number" 
-                           value="${o.unitValue || 0}" 
-                           min="0"
-                           style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                           onchange="updateOutcomeValue(${o.id}, 'unitValue', this.value)">
-                </td>
-                <td>
-                    <input type="number" 
-                           value="${o.duration || 1}" 
-                           min="1"
-                           style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                           onchange="updateOutcomeValue(${o.id}, 'duration', this.value)">
-                </td>
-                <td style="text-align: right; font-weight: 600;">
-                    ฿ ${totalValue.toLocaleString()}
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-window.updateOutcomeValue = function(id, field, value) {
-    const outcome = outcomes.find(o => o.id === id);
-    if (outcome) {
-        outcome[field] = parseFloat(value) || 0;
-        updateValuationTable();
-        checkStepCompletion(4);
-        saveProjectData();
-    }
-};
-
-// ========================================
-// ADJUSTMENT FACTORS TABLE
-// ========================================
-
-function updateAdjustmentTable() {
-    const tbody = document.getElementById('adjustmentTableBody');
-    if (!tbody) return;
-    
-    if (outcomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">ยังไม่มีข้อมูล</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = outcomes.map(o => `
-        <tr>
-            <td>${o.name}</td>
-            <td>
-                <input type="number" 
-                       value="${o.deadweight || 0}" 
-                       min="0" 
-                       max="100"
-                       style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                       onchange="updateAdjustmentFactor(${o.id}, 'deadweight', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       value="${o.attribution || 0}" 
-                       min="0" 
-                       max="100"
-                       style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                       onchange="updateAdjustmentFactor(${o.id}, 'attribution', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       value="${o.displacement || 0}" 
-                       min="0" 
-                       max="100"
-                       style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                       onchange="updateAdjustmentFactor(${o.id}, 'displacement', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       value="${o.dropoff || 0}" 
-                       min="0" 
-                       max="100"
-                       style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                       onchange="updateAdjustmentFactor(${o.id}, 'dropoff', this.value)">
-            </td>
-        </tr>
-    `).join('');
-}
-
-window.updateAdjustmentFactor = function(id, field, value) {
-    const outcome = outcomes.find(o => o.id === id);
-    if (outcome) {
-        outcome[field] = parseFloat(value) || 0;
-        saveProjectData();
-    }
-};
-
-// ========================================
-// SROI CALCULATION
-// ========================================
-
-window.calculateSROI = function() {
-    // Validate inputs
-    const totalCost = parseFloat(document.getElementById('totalCost')?.value) || 0;
-    const discountRate = parseFloat(document.getElementById('discountRate')?.value) || 3.5;
-    
-    if (totalCost <= 0) {
-        alert('❌ กรุณากรอกต้นทุนโครงการใน Step 1');
-        return;
-    }
-
-    if (outcomes.length === 0) {
-        alert('❌ กรุณาเพิ่มผลลัพธ์และกรอกข้อมูลการประเมินมูลค่า');
-        return;
-    }
-
-    // Check if all outcomes have values
-    const hasInvalidOutcome = outcomes.some(o => !o.quantity || !o.unitValue || !o.duration);
-    if (hasInvalidOutcome) {
-        alert('❌ กรุณากรอกข้อมูลการประเมินมูลค่าให้ครบถ้วนใน Step 4');
-        return;
-    }
-
-    // Calculate NPV for each outcome
-    const discountRateDecimal = discountRate / 100;
-    let totalBenefitNPV = 0;
-    const summaryData = [];
-
-    outcomes.forEach(outcome => {
-        const quantity = outcome.quantity || 0;
-        const unitValue = outcome.unitValue || 0;
-        const duration = outcome.duration || 1;
-        const deadweight = (outcome.deadweight || 0) / 100;
-        const attribution = (outcome.attribution || 0) / 100;
-        const displacement = (outcome.displacement || 0) / 100;
-        const dropoff = (outcome.dropoff || 0) / 100;
-
-        const initialValue = quantity * unitValue;
-        let npv = 0;
-
-        // Calculate NPV for each year
-        for (let year = 1; year <= duration; year++) {
-            // Apply drop-off
-            const dropoffFactor = Math.pow(1 - dropoff, year - 1);
-            
-            // Calculate adjusted value
-            let yearValue = initialValue * dropoffFactor;
-            yearValue = yearValue * (1 - deadweight);
-            yearValue = yearValue * (1 - attribution);
-            yearValue = yearValue * (1 - displacement);
-
-            // Apply discount rate
-            const discountFactor = Math.pow(1 + discountRateDecimal, year);
-            const yearNPV = yearValue / discountFactor;
-
-            npv += yearNPV;
-        }
-
-        totalBenefitNPV += npv;
-
-        summaryData.push({
-            name: outcome.name,
-            quantity: quantity,
-            unitValue: unitValue,
-            initialValue: initialValue,
-            deadweight: outcome.deadweight || 0,
-            attribution: outcome.attribution || 0,
-            displacement: outcome.displacement || 0,
-            netValue: initialValue * (1 - deadweight) * (1 - attribution) * (1 - displacement),
-            npv: npv
-        });
-    });
-
-    // Calculate cost NPV (assuming cost is incurred in year 0)
-    const totalCostNPV = totalCost;
-
-    // Calculate SROI
-    const netBenefit = totalBenefitNPV - totalCostNPV;
-    const sroiRatio = totalCostNPV > 0 ? totalBenefitNPV / totalCostNPV : 0;
-
-    // Calculate payback period (simplified)
-    let cumulativeValue = 0;
-    let paybackPeriod = 0;
-    const projectDuration = parseInt(document.getElementById('duration')?.value) || 1;
-    
-    for (let year = 1; year <= projectDuration; year++) {
-        outcomes.forEach(outcome => {
-            const quantity = outcome.quantity || 0;
-            const unitValue = outcome.unitValue || 0;
-            const dropoff = (outcome.dropoff || 0) / 100;
-            const dropoffFactor = Math.pow(1 - dropoff, year - 1);
-            
-            const yearValue = quantity * unitValue * dropoffFactor;
-            cumulativeValue += yearValue;
-        });
-
-        if (cumulativeValue >= totalCost && paybackPeriod === 0) {
-            paybackPeriod = year;
-        }
-    }
-
-    if (paybackPeriod === 0 && cumulativeValue < totalCost) {
-        paybackPeriod = projectDuration + Math.ceil((totalCost - cumulativeValue) / (cumulativeValue / projectDuration));
-    }
-
-    // Display results
-    document.getElementById('sroiRatio').textContent = sroiRatio.toFixed(2) + ':1';
-    document.getElementById('sroiValue').textContent = sroiRatio.toFixed(2);
-    document.getElementById('totalBenefitNPV').textContent = '฿ ' + totalBenefitNPV.toLocaleString(undefined, {maximumFractionDigits: 0});
-    document.getElementById('totalCostNPV').textContent = '฿ ' + totalCostNPV.toLocaleString(undefined, {maximumFractionDigits: 0});
-    document.getElementById('netBenefit').textContent = '฿ ' + netBenefit.toLocaleString(undefined, {maximumFractionDigits: 0});
-    document.getElementById('paybackPeriod').textContent = paybackPeriod + ' ปี';
-
-    // Update summary table
-    updateSummaryTable(summaryData);
-
-    // Create chart
-    createSROIChart(summaryData);
-
-    // Show results section
-    document.getElementById('resultsSection').style.display = 'block';
-
-    checkStepCompletion(5);
-    showToast('✅ คำนวณ SROI สำเร็จ!');
-    saveProjectData();
-};
-
-function updateSummaryTable(data) {
-    const tbody = document.getElementById('summaryTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = data.map(item => `
-        <tr>
-            <td>${item.name}</td>
-            <td style="text-align: right;">${item.quantity.toLocaleString()}</td>
-            <td style="text-align: right;">฿ ${item.unitValue.toLocaleString()}</td>
-            <td style="text-align: right;">฿ ${item.initialValue.toLocaleString()}</td>
-            <td style="text-align: center;">${item.deadweight}%</td>
-            <td style="text-align: center;">${item.attribution}%</td>
-            <td style="text-align: center;">${item.displacement}%</td>
-            <td style="text-align: right;">฿ ${item.netValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
-            <td style="text-align: right; font-weight: 600; color: #10b981;">฿ ${item.npv.toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
-        </tr>
-    `).join('');
-}
-
-function createSROIChart(data) {
-    const ctx = document.getElementById('sroiChart');
-    if (!ctx) return;
-
-    // Destroy existing chart if any
-    if (sroiChart) {
-        sroiChart.destroy();
-    }
-
-    sroiChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.map(d => d.name),
-            datasets: [{
-                label: 'มูลค่าเริ่มต้น (฿)',
-                data: data.map(d => d.initialValue),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
-            }, {
-                label: 'มูลค่าสุทธิ (฿)',
-                data: data.map(d => d.netValue),
-                backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                borderColor: 'rgba(245, 158, 11, 1)',
-                borderWidth: 1
-            }, {
-                label: 'NPV (฿)',
-                data: data.map(d => d.npv),
-                backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                borderColor: 'rgba(16, 185, 129, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'เปรียบเทียบมูลค่าผลลัพธ์แต่ละรายการ'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '฿ ' + value.toLocaleString();
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// ========================================
-// PDF GENERATION
-// ========================================
-
-window.generatePDF = function() {
-    alert('ฟังก์ชันสร้าง PDF กำลังพัฒนา\nจะเปิดใช้งานในเร็วๆ นี้');
-};
-
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = message;
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-}
-
-// ========================================
-// FIREBASE AUTHENTICATION
-// ========================================
-
-function initializeAuth() {
-    console.log('Initializing authentication...');
-    
-    window.showAlert = function(elementId, message, type = 'error') {
-        const alertElement = document.getElementById(elementId);
-        if (alertElement) {
-            alertElement.innerHTML = `
-                <div style="padding: 12px; margin-bottom: 16px; border-radius: 6px; 
-                     background: ${type === 'success' ? '#d1fae5' : '#fee2e2'};
-                     color: ${type === 'success' ? '#065f46' : '#991b1b'};
-                     border: 1px solid ${type === 'success' ? '#a7f3d0' : '#fecaca'};">
-                    ${message}
+        </div>
+
+        <div class="container dashboard-container" id="dashboardContainer">
+            <div class="dashboard-header">
+                <h2 class="dashboard-title">โครงการทั้งหมด</h2>
+            </div>
+
+            <div class="projects-grid" id="projectsGrid">
+                <div class="project-card new-project-card" onclick="createNewProject()">
+                    <div style="font-size: 3rem; margin-bottom: 16px;">➕</div>
+                    <div>สร้างโครงการใหม่</div>
                 </div>
-            `;
-            setTimeout(() => {
-                alertElement.innerHTML = '';
-            }, 5000);
-        }
-    };
+            </div>
+        </div>
+    </div>
 
-    window.handleRegister = async function(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('registerName').value.trim();
-        const email = document.getElementById('registerEmail').value.trim();
-        const password = generatePassword();
-        
-        if (!name || !email) {
-            showAlert('registerAlert', '❌ กรุณากรอกชื่อและอีเมล', 'error');
-            return;
-        }
-        
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '⏳ กำลังสมัครสมาชิก...';
-        submitBtn.disabled = true;
-        
-        try {
-            const { createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
-            await updateProfile(userCredential.user, { displayName: name });
-            await sendPasswordResetEmail(window.auth, email);
-            
-            showAlert('registerAlert', `✅ สมัครสมาชิกสำเร็จ! อีเมลสำหรับตั้งรหัสผ่านได้ถูกส่งไปยัง ${email} แล้ว`, 'success');
-            
-            document.getElementById('registerName').value = '';
-            document.getElementById('registerEmail').value = '';
-            document.getElementById('registerOrganization').value = '';
-            
-            setTimeout(() => toggleForm(), 3000);
-            
-        } catch (error) {
-            console.error('Registration Error:', error);
-            let errorMessage = '❌ เกิดข้อผิดพลาดในการสมัครสมาชิก';
-            
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = '❌ อีเมลนี้ถูกใช้งานแล้ว';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = '❌ รูปแบบอีเมลไม่ถูกต้อง';
-            }
-            
-            showAlert('registerAlert', errorMessage, 'error');
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    };
+    <!-- Main App Screen -->
+    <div id="mainApp" class="main-app">
+        <div class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div>
+                        <a href="#" class="back-to-dashboard" onclick="backToDashboard(); return false;">
+                            ← กลับไปหน้าแรก
+                        </a>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <h1 id="projectTitle">โครงการใหม่</h1>
+                        <div class="subtitle" id="saveStatus">
+                            <span id="saveStatusIcon">💾</span>
+                            <span id="saveStatusText">บันทึกอัตโนมัติเมื่อ: ไม่เคย</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn btn-success" onclick="saveAndBackToDashboard()" style="font-size: 0.9rem;">
+                            💾 บันทึกและกลับ
+                        </button>
+                        <span id="userNameDisplay2" style="font-size: 0.9rem;"></span>
+                        <button class="btn btn-danger" onclick="handleLogout()">🚪 ออกจากระบบ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    window.handleLogin = async function(event) {
-        event.preventDefault();
-        
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        
-        if (!email || !password) {
-            showAlert('loginAlert', '❌ กรุณากรอกอีเมลและรหัสผ่าน', 'error');
-            return;
-        }
-        
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
-        submitBtn.disabled = true;
-        
-        try {
-            const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const userCredential = await signInWithEmailAndPassword(window.auth, email, password);
-            currentUser = userCredential.user;
-            
-            showAlert('loginAlert', '✅ เข้าสู่ระบบสำเร็จ!', 'success');
-            
-            setTimeout(() => showDashboard(), 500);
-            
-        } catch (error) {
-            console.error('Login Error:', error);
-            let errorMessage = '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            showAlert('loginAlert', errorMessage, 'error');
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    };
+        <div class="container">
+            <div class="app-card">
+                <!-- Steps Navigation -->
+                <div class="steps-nav">
+                    <div class="step" onclick="goToStep(1)">
+                        <div class="step-number">1</div>
+                        <div class="step-title">ข้อมูลโครงการ</div>
+                    </div>
+                    <div class="step" onclick="goToStep(2)">
+                        <div class="step-number">2</div>
+                        <div class="step-title">ผู้มีส่วนได้เสีย</div>
+                    </div>
+                    <div class="step" onclick="goToStep(3)">
+                        <div class="step-number">3</div>
+                        <div class="step-title">ผลลัพธ์</div>
+                    </div>
+                    <div class="step" onclick="goToStep(4)">
+                        <div class="step-number">4</div>
+                        <div class="step-title">การประเมินมูลค่า</div>
+                    </div>
+                    <div class="step" onclick="goToStep(5)">
+                        <div class="step-number">5</div>
+                        <div class="step-title">คำนวณ SROI</div>
+                    </div>
+                    <div class="step" onclick="goToStep(6)">
+                        <div class="step-number">6</div>
+                        <div class="step-title">รายงาน</div>
+                    </div>
+                </div>
 
-    window.handleGoogleSignIn = async function() {
-        try {
-            const { GoogleAuthProvider, signInWithPopup } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const provider = new GoogleAuthProvider();
-            const result = await signInWithPopup(window.auth, provider);
-            currentUser = result.user;
-            
-            showAlert('loginAlert', '✅ เข้าสู่ระบบด้วย Google สำเร็จ!', 'success');
-            
-            setTimeout(() => showDashboard(), 500);
-            
-        } catch (error) {
-            console.error('Google Sign-in Error:', error);
-            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                showAlert('loginAlert', '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google', 'error');
-            }
-        }
-    };
+                <!-- Step 1: Project Information -->
+                <div id="step1" class="step-content active">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 1: ข้อมูลโครงการ</h2>
+                        <p class="step-description">กรอกข้อมูลพื้นฐานของโครงการและต้นทุนการดำเนินงาน</p>
+                    </div>
 
-    window.handleLogout = function() {
-        if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-            window.auth.signOut().then(() => {
-                currentUser = null;
-                currentProjectId = null;
-                stakeholders = [];
-                outcomes = [];
-                completedSteps = {1: false, 2: false, 3: false, 4: false, 5: false, 6: false};
-                
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('dashboardScreen').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'none';
-            });
-        }
-    };
+                    <div class="section">
+                        <h3 class="section-title">ข้อมูลทั่วไป</h3>
+                        <div class="input-group">
+                            <div class="form-group">
+                                <label class="form-label">ชื่อโครงการ <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="projectName" class="form-control" placeholder="เช่น โครงการส่งเสริมการอ่าน" onchange="saveProjectData()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">หน่วยงาน</label>
+                                <input type="text" id="organization" class="form-control" placeholder="เช่น มหาวิทยาลัยกรุงเทพ" onchange="saveProjectData()">
+                            </div>
+                        </div>
 
-    function showDashboard() {
-        const userName = currentUser.displayName || currentUser.email;
-        
-        document.getElementById('userNameDisplay').textContent = `สวัสดี, ${userName}`;
-        document.getElementById('userNameDisplay2').textContent = `${userName}`;
-        
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('dashboardScreen').style.display = 'block';
-        document.getElementById('dashboardContainer').style.display = 'block';
-        document.getElementById('mainApp').style.display = 'none';
-        
-        loadUserProjects();
-    }
+                        <div class="input-group">
+                            <div class="form-group">
+                                <label class="form-label">ระยะเวลาโครงการ (ปี) <span style="color: #ef4444;">*</span></label>
+                                <input type="number" id="duration" class="form-control" placeholder="เช่น 3" min="1" onchange="saveProjectData()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ปีที่เริ่มโครงการ</label>
+                                <input type="number" id="startYear" class="form-control" placeholder="เช่น 2025" min="2000" max="2100" onchange="saveProjectData()">
+                            </div>
+                        </div>
 
-    window.toggleForm = function() {
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        
-        const loginAlert = document.getElementById('loginAlert');
-        const registerAlert = document.getElementById('registerAlert');
-        if (loginAlert) loginAlert.innerHTML = '';
-        if (registerAlert) registerAlert.innerHTML = '';
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-        }
-    };
+                        <div class="form-group">
+                            <label class="form-label">วัตถุประสงค์โครงการ</label>
+                            <textarea id="objective" class="form-control" placeholder="อธิบายวัตถุประสงค์หลักของโครงการ..." onchange="saveProjectData()"></textarea>
+                        </div>
+                    </div>
 
-    function generatePassword(length = 12) {
-        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-        let password = '';
-        for (let i = 0; i < length; i++) {
-            password += charset.charAt(Math.floor(Math.random() * charset.length));
-        }
-        return password;
-    }
+                    <div class="section">
+                        <h3 class="section-title">ต้นทุนการดำเนินงาน</h3>
+                        <div class="form-group">
+                            <label class="form-label">ต้นทุนทั้งหมด (บาท) <span style="color: #ef4444;">*</span></label>
+                            <input type="number" id="totalCost" class="form-control" placeholder="เช่น 1000000" min="0" onchange="saveProjectData()">
+                            <small style="display: block; margin-top: 8px; color: #64748b;">
+                                💡 ระบุต้นทุนรวมทั้งหมดของโครงการ (จะนำไปคำนวณ SROI อัตโนมัติ)
+                            </small>
+                        </div>
+                    </div>
 
-    if (window.auth) {
-        window.auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                showDashboard();
-            } else {
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('dashboardScreen').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'none';
-            }
-        });
-    }
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            ถัดไป: ผู้มีส่วนได้ส่วนเสีย →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Stakeholders -->
+                <div id="step2" class="step-content">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 2: ผู้มีส่วนได้ส่วนเสีย</h2>
+                        <p class="step-description">ระบุกลุ่มบุคคลที่เกี่ยวข้องและได้รับผลกระทบจากโครงการ</p>
+                    </div>
+
+                    <div class="section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 class="section-title" style="margin: 0;">รายการผู้มีส่วนได้ส่วนเสีย</h3>
+                            <button type="button" class="btn btn-success" onclick="addStakeholder()">
+                                ➕ เพิ่มกลุ่มใหม่
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ชื่อกลุ่ม</th>
+                                        <th>จำนวนคน</th>
+                                        <th>ประเภท</th>
+                                        <th>คำอธิบาย</th>
+                                        <th style="width: 100px;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stakeholderTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                            ยังไม่มีข้อมูล (คลิก "เพิ่มกลุ่มใหม่" เพื่อเริ่มต้น)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            ← ย้อนกลับ
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            ถัดไป: ผลลัพธ์ →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Outcomes -->
+                <div id="step3" class="step-content">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 3: ผลลัพธ์</h2>
+                        <p class="step-description">กำหนดผลลัพธ์ที่เกิดขึ้นกับแต่ละกลุ่มผู้มีส่วนได้ส่วนเสีย</p>
+                    </div>
+
+                    <div class="section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 class="section-title" style="margin: 0;">รายการผลลัพธ์</h3>
+                            <button type="button" class="btn btn-success" onclick="addOutcome()">
+                                ➕ เพิ่มผลลัพธ์
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ผู้มีส่วนได้ส่วนเสีย</th>
+                                        <th>ผลลัพธ์</th>
+                                        <th>ประเภท</th>
+                                        <th>ตัวชี้วัด</th>
+                                        <th style="width: 100px;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="outcomeTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                            ยังไม่มีข้อมูล (คลิก "เพิ่มผลลัพธ์" เพื่อเริ่มต้น)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            ← ย้อนกลับ
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            ถัดไป: การประเมินมูลค่า →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Valuation -->
+                <div id="step4" class="step-content">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 4: การประเมินมูลค่า</h2>
+                        <p class="step-description">ประเมินมูลค่าและระยะเวลาของผลลัพธ์แต่ละรายการ</p>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">ตารางประเมินมูลค่า</h3>
+                        <p style="color: #64748b; margin-bottom: 16px;">
+                            กรอกข้อมูลจำนวน มูลค่าต่อหน่วย และระยะเวลาที่ผลลัพธ์คงอยู่
+                        </p>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ผลลัพธ์</th>
+                                        <th>ผู้รับผล</th>
+                                        <th style="width: 120px;">จำนวน</th>
+                                        <th style="width: 150px;">มูลค่า/หน่วย (฿)</th>
+                                        <th style="width: 120px;">ระยะเวลา (ปี)</th>
+                                        <th style="width: 150px;">มูลค่ารวม (฿)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="valuationTableBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                            ยังไม่มีข้อมูล (กรุณาเพิ่มผลลัพธ์ในขั้นตอนที่ 3)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            ← ย้อนกลับ
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            ถัดไป: คำนวณ SROI →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Calculate SROI -->
+                <div id="step5" class="step-content">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 5: คำนวณ SROI</h2>
+                        <p class="step-description">กรอกข้อมูลเพิ่มเติมและคำนวณผลตอบแทนทางสังคม</p>
+                    </div>
+
+                    <!-- Discount Rate Section -->
+                    <div class="section" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                        <h3 class="section-title" style="color: #92400e;">
+                            💰 อัตราคิดลด (Discount Rate)
+                        </h3>
+                        <p style="color: #78350f; margin-bottom: 16px;">
+                            ใช้สำหรับคำนวณมูลค่าปัจจุบันสุทธิ (NPV) ของผลประโยชน์และต้นทุน
+                        </p>
+                        <div class="form-group">
+                            <label class="form-label" style="color: #78350f;">
+                                Discount Rate (%) <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="discountRate" 
+                                class="form-control" 
+                                placeholder="เช่น 3.5" 
+                                step="0.1" 
+                                min="0" 
+                                max="100"
+                                value="3.5"
+                                onchange="saveProjectData()">
+                            <small style="display: block; margin-top: 8px; color: #78350f;">
+                                💡 แนะนำ: 3-5% สำหรับโครงการทางสังคม
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Cost Summary -->
+                    <div class="section">
+                        <h3 class="section-title">ต้นทุนโครงการ</h3>
+                        <div class="stat-card" style="border-left-color: #ef4444;">
+                            <div class="stat-value" style="color: #ef4444;" id="displayCost">฿ 0</div>
+                            <div class="stat-label">ต้นทุนรวมทั้งหมด (จาก Step 1)</div>
+                        </div>
+                    </div>
+
+                    <!-- Adjustment Factors -->
+                    <div class="section">
+                        <h3 class="section-title">ปัจจัยปรับค่า (Adjustment Factors)</h3>
+                        <p style="color: #64748b; margin-bottom: 16px;">
+                            กรอกค่าเป็นเปอร์เซ็นต์ (0-100) เพื่อปรับมูลค่าผลลัพธ์ให้แม่นยำ
+                        </p>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ผลลัพธ์</th>
+                                        <th>Deadweight (%)</th>
+                                        <th>Attribution (%)</th>
+                                        <th>Displacement (%)</th>
+                                        <th>Drop-off (%/ปี)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adjustmentTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                            ยังไม่มีข้อมูล
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 16px;">
+                            <strong style="color: #92400e;">คำอธิบาย:</strong>
+                            <ul style="margin-top: 8px; color: #78350f; padding-left: 20px;">
+                                <li><strong>Deadweight:</strong> ผลลัพธ์ที่จะเกิดขึ้นอยู่แล้วแม้ไม่มีโครงการ</li>
+                                <li><strong>Attribution:</strong> ส่วนที่เกิดจากปัจจัยอื่น ไม่ใช่โครงการนี้เพียงอย่างเดียว</li>
+                                <li><strong>Displacement:</strong> ผลกระทบลบที่อาจเกิดขึ้นในพื้นที่อื่น</li>
+                                <li><strong>Drop-off:</strong> อัตราการลดลงของผลลัพธ์ในแต่ละปี</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Calculate Button -->
+                    <div style="text-align: center; margin: 32px 0;">
+                        <button type="button" class="btn btn-success" onclick="calculateSROI()" style="font-size: 1.2rem; padding: 16px 48px;">
+                            🧮 คำนวณ SROI
+                        </button>
+                    </div>
+
+                    <!-- Results Section (Hidden until calculated) -->
+                    <div id="resultsSection" style="display: none;">
+                        <div class="result-card">
+                            <div class="result-label">อัตราส่วน SROI</div>
+                            <div class="result-value" id="sroiRatio">-</div>
+                            <p style="opacity: 0.9; font-size: 1rem;">ทุก 1 บาทที่ลงทุน สร้างมูลค่าทางสังคม <span id="sroiValue">-</span> บาท</p>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalBenefitNPV">฿ 0</div>
+                                <div class="stat-label">มูลค่าปัจจุบันของผลประโยชน์</div>
+                            </div>
+                            <div class="stat-card" style="border-left-color: #ef4444;">
+                                <div class="stat-value" style="color: #ef4444;" id="totalCostNPV">฿ 0</div>
+                                <div class="stat-label">มูลค่าปัจจุบันของต้นทุน</div>
+                            </div>
+                            <div class="stat-card" style="border-left-color: #10b981;">
+                                <div class="stat-value" style="color: #10b981;" id="netBenefit">฿ 0</div>
+                                <div class="stat-label">ผลประโยชน์สุทธิ (NPV)</div>
+                            </div>
+                            <div class="stat-card" style="border-left-color: #f59e0b;">
+                                <div class="stat-value" style="color: #f59e0b;" id="paybackPeriod">- ปี</div>
+                                <div class="stat-label">ระยะเวลาคืนทุน</div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Table -->
+                        <div class="section">
+                            <h3 class="section-title">สรุปผลการคำนวณ</h3>
+                            <div class="table-container">
+                                <table style="font-size: 0.9rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>ผลลัพธ์</th>
+                                            <th style="text-align: right;">จำนวน</th>
+                                            <th style="text-align: right;">มูลค่า/หน่วย</th>
+                                            <th style="text-align: right;">มูลค่าเริ่มต้น</th>
+                                            <th style="text-align: center;">Deadweight</th>
+                                            <th style="text-align: center;">Attribution</th>
+                                            <th style="text-align: center;">Displacement</th>
+                                            <th style="text-align: right;">มูลค่าสุทธิ</th>
+                                            <th style="text-align: right;">NPV</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="summaryTableBody">
+                                        <tr>
+                                            <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                                กรุณากดปุ่ม "คำนวณ SROI"
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Chart -->
+                        <div class="section">
+                            <h3 class="section-title">กราฟแสดงมูลค่าผลลัพธ์</h3>
+                            <div class="chart-container">
+                                <canvas id="sroiChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            ← ย้อนกลับ
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="nextStep()">
+                            ถัดไป: สร้างรายงาน →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 6: Generate Report -->
+                <div id="step6" class="step-content">
+                    <div class="step-header">
+                        <h2 class="step-title-main">ขั้นตอนที่ 6: สร้างรายงาน</h2>
+                        <p class="step-description">สร้างรายงาน SROI แบบเต็มรูปแบบ</p>
+                    </div>
+                    
+                    <div class="section">
+                        <h3 class="section-title">รายงานจะประกอบด้วย</h3>
+                        <ul style="line-height: 2;">
+                            <li>1. ข้อมูลโครงการและขอบเขตการประเมิน</li>
+                            <li>2. ผู้มีส่วนได้ส่วนเสียและผลลัพธ์</li>
+                            <li>3. แผนที่ผลกระทบ (Impact Map)</li>
+                            <li>4. การคำนวณและปัจจัยปรับค่า</li>
+                            <li>5. ผลการคำนวณ SROI</li>
+                            <li>6. แผนภูมิและกราฟวิเคราะห์</li>
+                            <li>7. สรุปและข้อเสนอแนะ</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="section" style="text-align: center;">
+                        <button type="button" class="btn btn-success" onclick="generatePDF()" style="font-size: 1.2rem; padding: 16px 48px;">
+                            📄 สร้างรายงาน PDF
+                        </button>
+                        <p style="margin-top: 16px; color: #64748b;">คลิกเพื่อสร้างและดาวน์โหลดรายงานเป็นไฟล์ PDF</p>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            ← ย้อนกลับ
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="saveAndBackToDashboard()" style="margin-left: auto;">
+                            💾 บันทึกและกลับหน้าแรก
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Stakeholder -->
+    <div id="stakeholderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>เพิ่มผู้มีส่วนได้ส่วนเสีย</h2>
+                <button class="close-modal" onclick="closeModal('stakeholderModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="stakeholderForm">
+                    <div class="modal-form-group">
+                        <label for="stakeholderName">ชื่อกลุ่ม <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="stakeholderName" required placeholder="เช่น เด็กนักเรียน, ครู, ชุมชน">
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="stakeholderCount">จำนวนคน <span style="color: #ef4444;">*</span></label>
+                        <input type="number" id="stakeholderCount" required min="1" placeholder="เช่น 100">
+                        <small>กรอกจำนวนคนที่ได้รับผลกระทบจากโครงการ</small>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="stakeholderType">ประเภท <span style="color: #ef4444;">*</span></label>
+                        <select id="stakeholderType" required>
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="ผู้รับผลประโยชน์โดยตรง">ผู้รับผลประโยชน์โดยตรง</option>
+                            <option value="ผู้รับผลกระทบทางอ้อม">ผู้รับผลกระทบทางอ้อม</option>
+                            <option value="ผู้มีส่วนร่วม">ผู้มีส่วนร่วม</option>
+                            <option value="หน่วยงานภาครัฐ">หน่วยงานภาครัฐ</option>
+                            <option value="องค์กรภาคเอกชน">องค์กรภาคเอกชน</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="stakeholderDescription">คำอธิบาย</label>
+                        <textarea id="stakeholderDescription" placeholder="อธิบายเพิ่มเติมเกี่ยวกับกลุ่มนี้..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('stakeholderModal')">ยกเลิก</button>
+                <button type="button" class="btn btn-success" onclick="saveStakeholder()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Outcome -->
+    <div id="outcomeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ เพิ่มผลลัพธ์</h2>
+                <button class="close-modal" onclick="closeModal('outcomeModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="outcomeForm">
+                    <div class="modal-form-group">
+                        <label for="outcomeStakeholder">เลือกผู้มีส่วนได้ส่วนเสีย <span style="color: #ef4444;">*</span></label>
+                        <select id="outcomeStakeholder" required>
+                            <option value="">-- เลือกกลุ่ม --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="outcomeName">ชื่อผลลัพธ์ <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="outcomeName" required placeholder="เช่น ทักษะการอ่านดีขึ้น">
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="outcomeType">ประเภทผลกระทบ <span style="color: #ef4444;">*</span></label>
+                        <select id="outcomeType" required>
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="ผลกระทบเชิงบวก">✅ ผลกระทบเชิงบวก</option>
+                            <option value="ผลกระทบเชิงลบ">⚠️ ผลกระทบเชิงลบ</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-form-group">
+                        <label for="outcomeIndicator">ตัวชี้วัด <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="outcomeIndicator" required placeholder="เช่น คะแนนเพิ่มขึ้น 20%">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('outcomeModal')">ยกเลิก</button>
+                <button type="button" class="btn btn-success" onclick="saveOutcome()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyC-r39KHKkmOZW5xjmNRiKrmPnSWeC9Xrg",
+        authDomain: "sroi-bu.firebaseapp.com",
+        projectId: "sroi-bu",
+        storageBucket: "sroi-bu.firebasestorage.app",
+        messagingSenderId: "467289509127",
+        appId: "1:467289509127:web:afc1a93643cbddce0849a2"
+      };
+      
+      window.firebaseApp = initializeApp(firebaseConfig);
+      window.auth = getAuth(window.firebaseApp);
+      window.db = getFirestore(window.firebaseApp);
+      
+      console.log('✅ Firebase initialized successfully');
+      window.dispatchEvent(new Event('firebaseReady'));
+    </script>
     
-    console.log('✅ SROI-BU Application initialized with Firestore');
-}
-
-// ========================================
-// INITIALIZE APP
-// ========================================
-
-console.log('App.js loaded with full Firestore integration');
-
-if (window.auth && window.db) {
-    initializeAuth();
-} else {
-    window.addEventListener('firebaseReady', () => {
-        initializeAuth();
-    });
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            if (currentProjectId) {
-                updateStep();
-            }
-        }, 100);
-    });
-} else {
-    setTimeout(() => {
-        if (currentProjectId) {
-            updateStep();
-        }
-    }, 100);
-}
+    <!-- Main App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
