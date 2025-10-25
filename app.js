@@ -1,4 +1,214 @@
-// Smooth Scrolling
+// ========================================
+// GLOBAL VARIABLES
+// ========================================
+let currentStep = 1;
+const totalSteps = 6;
+let stakeholders = [];
+let outcomes = [];
+let valuations = [];
+
+// ========================================
+// STEP NAVIGATION FUNCTIONS
+// ========================================
+
+function nextStep() {
+    if (currentStep < totalSteps) {
+        currentStep++;
+        updateStep();
+    }
+}
+
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStep();
+    }
+}
+
+function goToStep(stepNumber) {
+    if (stepNumber >= 1 && stepNumber <= totalSteps) {
+        currentStep = stepNumber;
+        updateStep();
+    }
+}
+
+function updateStep() {
+    // Hide all step contents
+    document.querySelectorAll('.step-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Show current step content
+    const currentContent = document.getElementById(`step${currentStep}`);
+    if (currentContent) {
+        currentContent.classList.add('active');
+    }
+    
+    // Update step navigation
+    document.querySelectorAll('.step').forEach((step, index) => {
+        if (index + 1 === currentStep) {
+            step.classList.add('active');
+        } else {
+            step.classList.remove('active');
+        }
+    });
+    
+    // Update buttons
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (prevBtn) {
+        prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-flex';
+    }
+    
+    if (nextBtn) {
+        if (currentStep === totalSteps) {
+            nextBtn.style.display = 'none';
+        } else {
+            nextBtn.style.display = 'inline-flex';
+        }
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ========================================
+// STAKEHOLDER FUNCTIONS
+// ========================================
+
+function addStakeholder() {
+    const name = prompt('ชื่อกลุ่มผู้มีส่วนได้ส่วนเสีย:');
+    if (!name) return;
+    
+    const count = prompt('จำนวนคน:');
+    if (!count) return;
+    
+    const type = prompt('ประเภท (เช่น ผู้รับผลประโยชน์โดยตรง):');
+    if (!type) return;
+    
+    const description = prompt('คำอธิบาย:');
+    
+    const stakeholder = {
+        id: Date.now(),
+        name: name,
+        count: parseInt(count),
+        type: type,
+        description: description || ''
+    };
+    
+    stakeholders.push(stakeholder);
+    updateStakeholderTable();
+}
+
+function deleteStakeholder(id) {
+    if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
+        stakeholders = stakeholders.filter(s => s.id !== id);
+        updateStakeholderTable();
+    }
+}
+
+function updateStakeholderTable() {
+    const tbody = document.getElementById('stakeholderTableBody');
+    if (!tbody) return;
+    
+    if (stakeholders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผู้มีส่วนได้ส่วนเสีย" เพื่อเริ่มต้น)</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = stakeholders.map(s => `
+        <tr>
+            <td>${s.name}</td>
+            <td>${s.count}</td>
+            <td>${s.type}</td>
+            <td>${s.description}</td>
+            <td>
+                <button type="button" class="btn btn-danger" style="padding: 4px 12px; font-size: 0.85rem;" onclick="deleteStakeholder(${s.id})">
+                    ลบ
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========================================
+// OUTCOME FUNCTIONS
+// ========================================
+
+function addOutcome() {
+    if (stakeholders.length === 0) {
+        alert('กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
+        return;
+    }
+    
+    const stakeholderName = prompt('เลือกผู้มีส่วนได้ส่วนเสีย:\n' + stakeholders.map((s, i) => `${i + 1}. ${s.name}`).join('\n'));
+    if (!stakeholderName) return;
+    
+    const outcomeName = prompt('ชื่อผลลัพธ์:');
+    if (!outcomeName) return;
+    
+    const type = prompt('ประเภท (เช่น ผลกระทบเชิงบวก):');
+    if (!type) return;
+    
+    const indicator = prompt('ตัวชี้วัด:');
+    
+    const outcome = {
+        id: Date.now(),
+        stakeholder: stakeholderName,
+        name: outcomeName,
+        type: type,
+        indicator: indicator || ''
+    };
+    
+    outcomes.push(outcome);
+    updateOutcomeTable();
+}
+
+function deleteOutcome(id) {
+    if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
+        outcomes = outcomes.filter(o => o.id !== id);
+        updateOutcomeTable();
+    }
+}
+
+function updateOutcomeTable() {
+    const tbody = document.getElementById('outcomeTableBody');
+    if (!tbody) return;
+    
+    if (outcomes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผลลัพธ์" เพื่อเริ่มต้น)</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = outcomes.map(o => `
+        <tr>
+            <td>${o.stakeholder}</td>
+            <td>${o.name}</td>
+            <td>${o.type}</td>
+            <td>${o.indicator}</td>
+            <td>
+                <button type="button" class="btn btn-danger" style="padding: 4px 12px; font-size: 0.85rem;" onclick="deleteOutcome(${o.id})">
+                    ลบ
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========================================
+// PDF GENERATION
+// ========================================
+
+function generatePDF() {
+    alert('ฟังก์ชันสร้าง PDF กำลังพัฒนา\nจะเปิดใช้งานในเร็วๆ นี้');
+    // TODO: Implement PDF generation with jsPDF
+}
+
+// ========================================
+// SMOOTH SCROLLING
+// ========================================
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
@@ -12,84 +222,8 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar Background on Scroll
-window.addEventListener('scroll', function() {
-    const navbar = document.querySelector('.navbar');
-    if (navbar && window.scrollY > 50) {
-        navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-        navbar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-    } else if (navbar) {
-        navbar.style.background = 'rgba(255, 255, 255, 0.95)';
-        navbar.style.boxShadow = 'none';
-    }
-});
-
-// Animated Counter
-function animateCounter(element, target, duration = 2000) {
-    let start = 0;
-    const increment = target / (duration / 16);
-    const timer = setInterval(() => {
-        start += increment;
-        if (start >= target) {
-            element.textContent = target + '+';
-            clearInterval(timer);
-        } else {
-            element.textContent = Math.floor(start) + '+';
-        }
-    }, 16);
-}
-
-// Intersection Observer for Counter Animation
-const observerOptions = {
-    threshold: 0.5
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const counters = entry.target.querySelectorAll('.counter');
-            counters.forEach(counter => {
-                const target = parseInt(counter.getAttribute('data-target'));
-                animateCounter(counter, target);
-            });
-            observer.unobserve(entry.target);
-        }
-    });
-}, observerOptions);
-
-const statsSection = document.querySelector('.stats');
-if (statsSection) {
-    observer.observe(statsSection);
-}
-
-// Typing Effect
-function typeWriter(element, text, speed = 50) {
-    let i = 0;
-    element.textContent = '';
-    
-    function type() {
-        if (i < text.length) {
-            element.textContent += text.charAt(i);
-            i++;
-            setTimeout(type, speed);
-        }
-    }
-    
-    type();
-}
-
-// Initialize typing effect when page loads
-window.addEventListener('load', () => {
-    const heroTitle = document.querySelector('.hero h1');
-    if (heroTitle) {
-        const originalText = heroTitle.textContent;
-        typeWriter(heroTitle, originalText, 100);
-    }
-});
-
 // ========================================
 // FIREBASE AUTHENTICATION
-// Wait for Firebase to be ready before using it
 // ========================================
 
 function initializeAuth() {
@@ -265,6 +399,10 @@ function initializeAuth() {
                 
                 document.getElementById('authScreen').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
+                
+                // Reset to step 1
+                currentStep = 1;
+                updateStep();
             });
         }
     };
@@ -280,12 +418,22 @@ function initializeAuth() {
         
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
+        
+        // Initialize step 1
+        currentStep = 1;
+        updateStep();
     };
 
     // Toggle between login and register forms
     window.toggleForm = function() {
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
+        
+        // Clear alerts
+        const loginAlert = document.getElementById('loginAlert');
+        const registerAlert = document.getElementById('registerAlert');
+        if (loginAlert) loginAlert.innerHTML = '';
+        if (registerAlert) registerAlert.innerHTML = '';
         
         if (loginForm.style.display === 'none') {
             loginForm.style.display = 'block';
@@ -297,7 +445,7 @@ function initializeAuth() {
     };
 
     // Generate random password
-    function generatePassword(length = 8) {
+    function generatePassword(length = 12) {
         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
         let password = '';
         for (let i = 0; i < length; i++) {
@@ -323,6 +471,10 @@ function initializeAuth() {
     console.log('✅ SROI-BU Application initialized with Firebase Authentication');
 }
 
+// ========================================
+// INITIALIZE APP
+// ========================================
+
 // Wait for Firebase to be ready
 if (window.auth) {
     // Firebase already loaded
@@ -334,60 +486,10 @@ if (window.auth) {
     });
 }
 
-// Mobile Menu Toggle
-const menuToggle = document.querySelector('.menu-toggle');
-const navMenu = document.querySelector('.nav-menu');
-
-if (menuToggle && navMenu) {
-    menuToggle.addEventListener('click', () => {
-        navMenu.classList.toggle('active');
-    });
-}
-
-// Close mobile menu when clicking outside
-document.addEventListener('click', (e) => {
-    if (navMenu && menuToggle) {
-        if (!navMenu.contains(e.target) && !menuToggle.contains(e.target)) {
-            navMenu.classList.remove('active');
-        }
-    }
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+    // Set initial step
+    updateStep();
+    
+    console.log('✅ App loaded successfully');
 });
-
-// Fade-in animation on scroll
-const fadeElements = document.querySelectorAll('.fade-in');
-
-const fadeObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-        }
-    });
-}, { threshold: 0.1 });
-
-fadeElements.forEach(element => {
-    element.style.opacity = '0';
-    element.style.transform = 'translateY(20px)';
-    element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-    fadeObserver.observe(element);
-});
-
-// Back to top button
-const backToTopButton = document.querySelector('.back-to-top');
-
-if (backToTopButton) {
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 300) {
-            backToTopButton.style.display = 'block';
-        } else {
-            backToTopButton.style.display = 'none';
-        }
-    });
-
-    backToTopButton.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    });
-}
