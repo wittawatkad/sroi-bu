@@ -1110,8 +1110,407 @@ function createSROIChart(data) {
 // PDF GENERATION
 // ========================================
 
-window.generatePDF = function() {
-    alert('ฟังก์ชันสร้าง PDF กำลังพัฒนา\nจะเปิดใช้งานในเร็วๆ นี้');
+// ========================================
+// PDF GENERATION
+// ========================================
+
+window.generatePDF = async function() {
+    try {
+        // Validate data
+        if (!document.getElementById('projectName')?.value) {
+            alert('❌ กรุณากรอกชื่อโครงการก่อนสร้างรายงาน');
+            return;
+        }
+
+        if (outcomes.length === 0) {
+            alert('❌ กรุณาเพิ่มผลลัพธ์ก่อนสร้างรายงาน');
+            return;
+        }
+
+        showToast('⏳ กำลังสร้างรายงาน PDF...');
+
+        // Import jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        let yPos = 20;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
+
+        // ฟังก์ชันเช็คและเพิ่มหน้าใหม่
+        function checkPageBreak(neededSpace = 20) {
+            if (yPos + neededSpace > pageHeight - 20) {
+                doc.addPage();
+                yPos = 20;
+                return true;
+            }
+            return false;
+        }
+
+        // ฟังก์ชันเขียนข้อความแบบหลายบรรทัด (รองรับภาษาไทย)
+        function addMultilineText(text, maxWidth) {
+            const lines = doc.splitTextToSize(text, maxWidth);
+            lines.forEach(line => {
+                checkPageBreak();
+                doc.text(line, margin, yPos);
+                yPos += 7;
+            });
+        }
+
+        // Load Thai font (using Sarabun from Google Fonts - Base64 encoded)
+        // Note: For proper Thai support, you'll need to add the font file
+        // For now, we'll use the default font
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.setTextColor(30, 58, 138); // Primary color
+        
+        // Title
+        const title = "รายงาน SROI Calculator";
+        const titleWidth = doc.getTextWidth(title);
+        doc.text(title, (pageWidth - titleWidth) / 2, yPos);
+        yPos += 15;
+
+        doc.setFontSize(14);
+        const subtitle = "Social Return on Investment";
+        const subtitleWidth = doc.getTextWidth(subtitle);
+        doc.text(subtitle, (pageWidth - subtitleWidth) / 2, yPos);
+        yPos += 15;
+
+        // ========================================
+        // 1. ข้อมูลโครงการ
+        // ========================================
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("1. ข้อมูลโครงการและขอบเขตการประเมิน", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        const projectData = [
+            { label: "ชื่อโครงการ", value: document.getElementById('projectName')?.value || '-' },
+            { label: "องค์กร/หน่วยงาน", value: document.getElementById('organization')?.value || '-' },
+            { label: "ระยะเวลาโครงการ", value: `${document.getElementById('duration')?.value || 1} ปี` },
+            { label: "ปีที่เริ่มโครงการ", value: document.getElementById('startYear')?.value || new Date().getFullYear() },
+            { label: "วัตถุประสงค์", value: document.getElementById('objective')?.value || '-' },
+            { label: "ต้นทุนโครงการทั้งหมด", value: `฿ ${parseFloat(document.getElementById('totalCost')?.value || 0).toLocaleString()}` },
+            { label: "อัตราคิดลด (Discount Rate)", value: `${document.getElementById('discountRate')?.value || 3.5}%` }
+        ];
+
+        projectData.forEach(item => {
+            checkPageBreak(15);
+            doc.setFont("helvetica", "bold");
+            doc.text(`${item.label}:`, margin, yPos);
+            doc.setFont("helvetica", "normal");
+            
+            if (item.label === "วัตถุประสงค์" && item.value.length > 50) {
+                yPos += 7;
+                addMultilineText(item.value, contentWidth - 10);
+            } else {
+                doc.text(item.value, margin + 60, yPos);
+                yPos += 7;
+            }
+        });
+
+        yPos += 5;
+
+        // ========================================
+        // 2. ผู้มีส่วนได้ส่วนเสีย
+        // ========================================
+        checkPageBreak(30);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("2. ผู้มีส่วนได้ส่วนเสีย (Stakeholders)", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        if (stakeholders.length === 0) {
+            doc.text("- ยังไม่มีข้อมูล", margin, yPos);
+            yPos += 10;
+        } else {
+            // Table header
+            doc.setFont("helvetica", "bold");
+            doc.setFillColor(241, 245, 249);
+            doc.rect(margin, yPos, contentWidth, 8, 'F');
+            doc.text("ลำดับ", margin + 2, yPos + 6);
+            doc.text("ชื่อกลุ่ม", margin + 20, yPos + 6);
+            doc.text("จำนวนคน", margin + 80, yPos + 6);
+            doc.text("ประเภท", margin + 120, yPos + 6);
+            yPos += 10;
+
+            doc.setFont("helvetica", "normal");
+            stakeholders.forEach((s, index) => {
+                checkPageBreak(10);
+                doc.text(`${index + 1}`, margin + 2, yPos);
+                doc.text(s.name || '-', margin + 20, yPos);
+                doc.text((s.count || 0).toLocaleString(), margin + 80, yPos);
+                doc.text(s.type || '-', margin + 120, yPos);
+                yPos += 7;
+            });
+        }
+
+        yPos += 5;
+
+        // ========================================
+        // 3. ผลลัพธ์และตัวชี้วัด
+        // ========================================
+        checkPageBreak(30);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("3. ผลลัพธ์และตัวชี้วัด (Outcomes)", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        if (outcomes.length === 0) {
+            doc.text("- ยังไม่มีข้อมูล", margin, yPos);
+            yPos += 10;
+        } else {
+            outcomes.forEach((o, index) => {
+                checkPageBreak(20);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${index + 1}. ${o.name}`, margin, yPos);
+                yPos += 7;
+                
+                doc.setFont("helvetica", "normal");
+                doc.text(`   กลุ่มเป้าหมาย: ${o.stakeholder}`, margin, yPos);
+                yPos += 6;
+                doc.text(`   ประเภทผลกระทบ: ${o.type}`, margin, yPos);
+                yPos += 6;
+                doc.text(`   ตัวชี้วัด: ${o.indicator}`, margin, yPos);
+                yPos += 8;
+            });
+        }
+
+        yPos += 5;
+
+        // ========================================
+        // 4. การประเมินมูลค่าทางการเงิน
+        // ========================================
+        checkPageBreak(30);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("4. การประเมินมูลค่าทางการเงิน", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+
+        if (outcomes.length === 0 || !outcomes[0].quantity) {
+            doc.text("- ยังไม่มีข้อมูล", margin, yPos);
+            yPos += 10;
+        } else {
+            // Table header
+            doc.setFont("helvetica", "bold");
+            doc.setFillColor(241, 245, 249);
+            doc.rect(margin, yPos, contentWidth, 8, 'F');
+            doc.text("ผลลัพธ์", margin + 2, yPos + 6);
+            doc.text("จำนวน", margin + 70, yPos + 6);
+            doc.text("มูลค่า/หน่วย", margin + 95, yPos + 6);
+            doc.text("ระยะเวลา", margin + 130, yPos + 6);
+            doc.text("มูลค่ารวม", margin + 155, yPos + 6);
+            yPos += 10;
+
+            doc.setFont("helvetica", "normal");
+            outcomes.forEach((o) => {
+                checkPageBreak(10);
+                const totalValue = (o.quantity || 0) * (o.unitValue || 0);
+                
+                // ตัดชื่อให้สั้นลง
+                const shortName = o.name.length > 20 ? o.name.substring(0, 20) + '...' : o.name;
+                
+                doc.text(shortName, margin + 2, yPos);
+                doc.text((o.quantity || 0).toLocaleString(), margin + 70, yPos);
+                doc.text(`฿${(o.unitValue || 0).toLocaleString()}`, margin + 95, yPos);
+                doc.text(`${o.duration || 1} ปี`, margin + 130, yPos);
+                doc.text(`฿${totalValue.toLocaleString()}`, margin + 155, yPos);
+                yPos += 7;
+            });
+        }
+
+        yPos += 5;
+
+        // ========================================
+        // 5. ปัจจัยปรับค่า
+        // ========================================
+        checkPageBreak(30);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("5. ปัจจัยปรับค่า (Adjustment Factors)", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+
+        if (outcomes.length === 0) {
+            doc.text("- ยังไม่มีข้อมูล", margin, yPos);
+            yPos += 10;
+        } else {
+            // Table header
+            doc.setFont("helvetica", "bold");
+            doc.setFillColor(241, 245, 249);
+            doc.rect(margin, yPos, contentWidth, 8, 'F');
+            doc.text("ผลลัพธ์", margin + 2, yPos + 6);
+            doc.text("Deadweight", margin + 70, yPos + 6);
+            doc.text("Attribution", margin + 110, yPos + 6);
+            doc.text("Displacement", margin + 145, yPos + 6);
+            yPos += 10;
+
+            doc.setFont("helvetica", "normal");
+            outcomes.forEach((o) => {
+                checkPageBreak(10);
+                const shortName = o.name.length > 20 ? o.name.substring(0, 20) + '...' : o.name;
+                
+                doc.text(shortName, margin + 2, yPos);
+                doc.text(`${o.deadweight || 0}%`, margin + 70, yPos);
+                doc.text(`${o.attribution || 0}%`, margin + 110, yPos);
+                doc.text(`${o.displacement || 0}%`, margin + 145, yPos);
+                yPos += 7;
+            });
+        }
+
+        yPos += 10;
+
+        // ========================================
+        // 6. ผลการคำนวณ SROI
+        // ========================================
+        checkPageBreak(50);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("6. ผลการคำนวณ SROI", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+
+        // Get SROI values
+        const sroiRatio = document.getElementById('sroiValue')?.textContent || 'N/A';
+        const totalBenefit = document.getElementById('totalBenefitNPV')?.textContent || '-';
+        const totalCost = document.getElementById('totalCostNPV')?.textContent || '-';
+        const netBenefit = document.getElementById('netBenefit')?.textContent || '-';
+        const paybackPeriod = document.getElementById('paybackPeriod')?.textContent || '-';
+
+        // SROI Ratio Box (Highlighted)
+        doc.setFillColor(16, 185, 129);
+        doc.roundedRect(margin, yPos, contentWidth, 20, 3, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        const sroiText = `SROI Ratio: ${sroiRatio}:1`;
+        const sroiTextWidth = doc.getTextWidth(sroiText);
+        doc.text(sroiText, (pageWidth - sroiTextWidth) / 2, yPos + 13);
+        yPos += 25;
+
+        // Other metrics
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        const metrics = [
+            { label: "มูลค่าผลประโยชน์รวม (NPV)", value: totalBenefit },
+            { label: "ต้นทุนโครงการ", value: totalCost },
+            { label: "ผลประโยชน์สุทธิ", value: netBenefit },
+            { label: "ระยะเวลาคืนทุน", value: paybackPeriod }
+        ];
+
+        checkPageBreak(35);
+        metrics.forEach(item => {
+            doc.setFont("helvetica", "bold");
+            doc.text(`${item.label}:`, margin, yPos);
+            doc.setFont("helvetica", "normal");
+            doc.text(item.value, margin + 70, yPos);
+            yPos += 8;
+        });
+
+        yPos += 10;
+
+        // ========================================
+        // 7. สรุปผล
+        // ========================================
+        checkPageBreak(40);
+        doc.setFillColor(30, 58, 138);
+        doc.rect(margin, yPos, contentWidth, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("7. สรุปและข้อเสนอแนะ", margin + 2, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        const sroiValue = parseFloat(sroiRatio);
+        let interpretation = "";
+        
+        if (sroiValue > 3) {
+            interpretation = "โครงการนี้มีผลตอบแทนทางสังคมในระดับสูงมาก (Excellent) โดยสร้างมูลค่าทางสังคม\nมากกว่าการลงทุนถึง " + sroiValue + " เท่า ซึ่งแสดงให้เห็นว่าโครงการมีประสิทธิผลสูงและควร\nดำเนินการต่อไปหรือขยายผลให้กว้างขึ้น";
+        } else if (sroiValue > 2) {
+            interpretation = "โครงการนี้มีผลตอบแทนทางสังคมในระดับดี (Good) สร้างมูลค่าเพิ่มเกินกว่าการลงทุน\nอย่างชัดเจน แนะนำให้ดำเนินการต่อไปและพิจารณาปรับปรุงเพื่อเพิ่มประสิทธิภาพ";
+        } else if (sroiValue > 1) {
+            interpretation = "โครงการนี้มีผลตอบแทนทางสังคมในระดับที่ยอมรับได้ (Acceptable) มีมูลค่าเกินกว่า\nการลงทุน แต่ควรพิจารณาปรับปรุงเพื่อเพิ่มประสิทธิภาพให้ดีขึ้น";
+        } else if (sroiValue === 1) {
+            interpretation = "โครงการนี้มีผลตอบแทนทางสังคมเท่ากับการลงทุน ควรพิจารณาปรับปรุงการดำเนินงาน\nเพื่อเพิ่มมูลค่าทางสังคมให้มากขึ้น";
+        } else {
+            interpretation = "โครงการนี้มีผลตอบแทนทางสังคมต่ำกว่าการลงทุน ควรทบทวนและปรับปรุงแนวทาง\nการดำเนินงานอย่างจริงจัง";
+        }
+
+        addMultilineText(interpretation, contentWidth - 10);
+
+        yPos += 10;
+
+        // ========================================
+        // Footer
+        // ========================================
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(9);
+            doc.setTextColor(128, 128, 128);
+            doc.text(`หน้า ${i} จาก ${pageCount}`, pageWidth - 30, pageHeight - 10);
+            doc.text(`สร้างโดย SROI Calculator | ${new Date().toLocaleDateString('th-TH')}`, margin, pageHeight - 10);
+        }
+
+        // Save PDF
+        const fileName = `SROI_Report_${document.getElementById('projectName')?.value || 'Project'}_${new Date().getTime()}.pdf`;
+        doc.save(fileName);
+
+        showToast('✅ สร้างรายงาน PDF สำเร็จ!');
+        checkStepCompletion(6);
+        saveProjectData();
+
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert('❌ เกิดข้อผิดพลาดในการสร้าง PDF: ' + error.message);
+    }
 };
 
 // ========================================
