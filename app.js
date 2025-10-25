@@ -11,41 +11,54 @@ let valuations = [];
 // STEP NAVIGATION FUNCTIONS
 // ========================================
 
-function nextStep() {
+// Make functions globally available immediately
+window.nextStep = function() {
+    console.log('nextStep called, current:', currentStep);
     if (currentStep < totalSteps) {
         currentStep++;
         updateStep();
     }
-}
+};
 
-function previousStep() {
+window.previousStep = function() {
+    console.log('previousStep called, current:', currentStep);
     if (currentStep > 1) {
         currentStep--;
         updateStep();
     }
-}
+};
 
-function goToStep(stepNumber) {
+window.goToStep = function(stepNumber) {
+    console.log('goToStep called:', stepNumber);
     if (stepNumber >= 1 && stepNumber <= totalSteps) {
         currentStep = stepNumber;
         updateStep();
     }
-}
+};
 
 function updateStep() {
+    console.log('Updating to step:', currentStep);
+    
     // Hide all step contents
-    document.querySelectorAll('.step-content').forEach(content => {
+    const allSteps = document.querySelectorAll('.step-content');
+    allSteps.forEach(content => {
         content.classList.remove('active');
+        content.style.display = 'none';
     });
     
     // Show current step content
     const currentContent = document.getElementById(`step${currentStep}`);
     if (currentContent) {
         currentContent.classList.add('active');
+        currentContent.style.display = 'block';
+        console.log('Showing step:', currentStep);
+    } else {
+        console.error('Step element not found:', `step${currentStep}`);
     }
     
-    // Update step navigation
-    document.querySelectorAll('.step').forEach((step, index) => {
+    // Update step navigation buttons
+    const stepButtons = document.querySelectorAll('.step');
+    stepButtons.forEach((step, index) => {
         if (index + 1 === currentStep) {
             step.classList.add('active');
         } else {
@@ -53,7 +66,7 @@ function updateStep() {
         }
     });
     
-    // Update buttons
+    // Update navigation buttons
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     
@@ -77,7 +90,7 @@ function updateStep() {
 // STAKEHOLDER FUNCTIONS
 // ========================================
 
-function addStakeholder() {
+window.addStakeholder = function() {
     const name = prompt('ชื่อกลุ่มผู้มีส่วนได้ส่วนเสีย:');
     if (!name) return;
     
@@ -99,14 +112,14 @@ function addStakeholder() {
     
     stakeholders.push(stakeholder);
     updateStakeholderTable();
-}
+};
 
-function deleteStakeholder(id) {
+window.deleteStakeholder = function(id) {
     if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
         stakeholders = stakeholders.filter(s => s.id !== id);
         updateStakeholderTable();
     }
-}
+};
 
 function updateStakeholderTable() {
     const tbody = document.getElementById('stakeholderTableBody');
@@ -136,7 +149,7 @@ function updateStakeholderTable() {
 // OUTCOME FUNCTIONS
 // ========================================
 
-function addOutcome() {
+window.addOutcome = function() {
     if (stakeholders.length === 0) {
         alert('กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
         return;
@@ -163,14 +176,14 @@ function addOutcome() {
     
     outcomes.push(outcome);
     updateOutcomeTable();
-}
+};
 
-function deleteOutcome(id) {
+window.deleteOutcome = function(id) {
     if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
         outcomes = outcomes.filter(o => o.id !== id);
         updateOutcomeTable();
     }
-}
+};
 
 function updateOutcomeTable() {
     const tbody = document.getElementById('outcomeTableBody');
@@ -200,27 +213,9 @@ function updateOutcomeTable() {
 // PDF GENERATION
 // ========================================
 
-function generatePDF() {
+window.generatePDF = function() {
     alert('ฟังก์ชันสร้าง PDF กำลังพัฒนา\nจะเปิดใช้งานในเร็วๆ นี้');
-    // TODO: Implement PDF generation with jsPDF
-}
-
-// ========================================
-// SMOOTH SCROLLING
-// ========================================
-
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
+};
 
 // ========================================
 // FIREBASE AUTHENTICATION
@@ -421,7 +416,9 @@ function initializeAuth() {
         
         // Initialize step 1
         currentStep = 1;
-        updateStep();
+        setTimeout(() => {
+            updateStep();
+        }, 100);
     };
 
     // Toggle between login and register forms
@@ -475,21 +472,29 @@ function initializeAuth() {
 // INITIALIZE APP
 // ========================================
 
+// Initialize immediately
+console.log('App.js loaded');
+
 // Wait for Firebase to be ready
 if (window.auth) {
-    // Firebase already loaded
     initializeAuth();
 } else {
-    // Wait for firebaseReady event
     window.addEventListener('firebaseReady', () => {
         initializeAuth();
     });
 }
 
-// Initialize on page load
-window.addEventListener('DOMContentLoaded', () => {
-    // Set initial step
-    updateStep();
-    
-    console.log('✅ App loaded successfully');
-});
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM ready, initializing step');
+        setTimeout(() => {
+            updateStep();
+        }, 100);
+    });
+} else {
+    console.log('DOM already ready, initializing step');
+    setTimeout(() => {
+        updateStep();
+    }, 100);
+}
