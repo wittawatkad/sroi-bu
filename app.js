@@ -134,7 +134,7 @@ function displayProjects(projects) {
     
     // Keep the "New Project" card
     const newProjectCard = `
-        <div class="project-card new-project-card" onclick="createNewProject()">
+        <div class="project-card new-project-card" id="newProjectCard">
             <div style="font-size: 3rem; margin-bottom: 16px;">➕</div>
             <div>สร้างโครงการใหม่</div>
         </div>
@@ -145,7 +145,7 @@ function displayProjects(projects) {
         const lastUpdated = formatDate(project.lastUpdated);
 
         return `
-            <div class="project-card" onclick="openProject('${project.id}')">
+            <div class="project-card" data-project-id="${project.id}">
                 <div class="project-card-header">
                     <div>
                         <div class="project-card-title">${project.projectName || 'โครงการไม่มีชื่อ'}</div>
@@ -153,7 +153,7 @@ function displayProjects(projects) {
                             ${project.organization || 'ไม่ระบุหน่วยงาน'} • อัพเดท ${lastUpdated}
                         </div>
                     </div>
-                    <button class="btn btn-danger icon-btn" onclick="event.stopPropagation(); deleteProject('${project.id}')" title="ลบโครงการ">
+                    <button class="btn btn-danger icon-btn" data-delete-id="${project.id}" title="ลบโครงการ">
                         🗑️
                     </button>
                 </div>
@@ -168,6 +168,45 @@ function displayProjects(projects) {
     }).join('');
 
     grid.innerHTML = newProjectCard + projectCards;
+
+    // Add event listeners after DOM is updated
+    setTimeout(() => {
+        // New project card click handler
+        const newCard = document.getElementById('newProjectCard');
+        if (newCard) {
+            console.log('Attaching click handler to new project card');
+            newCard.addEventListener('click', function(e) {
+                console.log('New project card clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                window.createNewProject();
+            });
+        }
+
+        // Existing project cards click handlers
+        document.querySelectorAll('.project-card[data-project-id]').forEach(card => {
+            const projectId = card.getAttribute('data-project-id');
+            card.addEventListener('click', function(e) {
+                // Don't trigger if clicking delete button
+                if (e.target.closest('[data-delete-id]')) {
+                    return;
+                }
+                console.log('Opening project:', projectId);
+                window.openProject(projectId);
+            });
+        });
+
+        // Delete button handlers
+        document.querySelectorAll('[data-delete-id]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const projectId = this.getAttribute('data-delete-id');
+                console.log('Deleting project:', projectId);
+                window.deleteProject(projectId);
+            });
+        });
+    }, 100);
 }
 
 function calculateProjectProgress(project) {
@@ -196,7 +235,16 @@ function formatDate(dateString) {
 }
 
 async function createNewProject() {
+    console.log('createNewProject called');
+    console.log('currentUser:', currentUser);
+    
+    if (!currentUser) {
+        alert('❌ กรุณาเข้าสู่ระบบก่อน');
+        return;
+    }
+
     try {
+        console.log('Creating new project...');
         const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
 
         const projectData = {
@@ -219,6 +267,8 @@ async function createNewProject() {
         const docRef = await collection(window.db, 'projects');
         const newDoc = await addDoc(docRef, projectData);
 
+        console.log('Project created with ID:', newDoc.id);
+
         currentProjectId = newDoc.id;
         stakeholders = [];
         outcomes = [];
@@ -228,15 +278,21 @@ async function createNewProject() {
         showToast('✅ สร้างโครงการใหม่สำเร็จ!');
     } catch (error) {
         console.error('Error creating project:', error);
-        alert('เกิดข้อผิดพลาดในการสร้างโครงการ');
+        alert('เกิดข้อผิดพลาดในการสร้างโครงการ: ' + error.message);
     }
 }
+
+// Make it globally accessible
+window.createNewProject = createNewProject;
 
 async function openProject(projectId) {
     currentProjectId = projectId;
     await loadProjectData(projectId);
     showMainApp();
 }
+
+// Make it globally accessible
+window.openProject = openProject;
 
 async function deleteProject(projectId) {
     if (!confirm('คุณต้องการลบโครงการนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
@@ -253,9 +309,12 @@ async function deleteProject(projectId) {
         loadUserProjects();
     } catch (error) {
         console.error('Error deleting project:', error);
-        alert('เกิดข้อผิดพลาดในการลบโครงการ');
+        alert('เกิดข้อผิดพลาดในการลบโครงการ: ' + error.message);
     }
 }
+
+// Make it globally accessible
+window.deleteProject = deleteProject;
 
 function backToDashboard() {
     document.getElementById('mainApp').style.display = 'none';
@@ -267,6 +326,9 @@ function backToDashboard() {
     
     loadUserProjects();
 }
+
+// Make it globally accessible
+window.backToDashboard = backToDashboard;
 
 function showMainApp() {
     document.getElementById('authScreen').style.display = 'none';
