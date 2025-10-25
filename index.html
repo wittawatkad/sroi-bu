@@ -1213,5 +1213,24 @@
     </script>
 
     <script src="app.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyC-r39KHKkmOZW5xjmNRiKrmPnSWeC9Xrg",
+        authDomain: "sroi-bu.firebaseapp.com",
+        projectId: "sroi-bu",
+        storageBucket: "sroi-bu.firebasestorage.app",
+        messagingSenderId: "467289509127",
+        appId: "1:467289509127:web:afc1a93643cbddce0849a2"
+      };
+      
+      const app = initializeApp(firebaseConfig);
+      window.auth = getAuth(app);
+    </script>
+    <script src="app.js"></script>
+
+    
 </body>
 </html>
