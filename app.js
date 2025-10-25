@@ -1,51 +1,393 @@
 // ========================================
-// GLOBAL VARIABLES
+// COMPLETE SROI CALCULATOR WITH FIREBASE
 // ========================================
+
+// Global Variables
 let currentStep = 1;
 const totalSteps = 6;
-let stakeholders = [];
-let outcomes = [];
-let sroiChart = null;
+let currentProject = null;
+let projects = [];
+let userProfile = null;
 
-// ========================================
-// MODAL FUNCTIONS
-// ========================================
-
-window.openModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
+// Project Data Structure
+const projectData = {
+    id: null,
+    name: '',
+    description: '',
+    organization: '',
+    startDate: '',
+    endDate: '',
+    budget: 0,
+    discountRate: 3,
+    stakeholders: [],
+    outcomes: [],
+    status: 'draft', // 'draft' or 'completed'
+    sroiRatio: 0,
+    totalNPV: 0,
+    createdAt: null,
+    updatedAt: null,
+    userId: null
 };
 
-window.closeModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = 'auto';
+// Step Completion Status
+const stepStatus = {
+    step1: false,
+    step2: false,
+    step3: false,
+    step4: false,
+    step5: false
+};
+
+// ========================================
+// FIREBASE INITIALIZATION
+// ========================================
+
+let db = null;
+
+async function initializeFirestore() {
+    try {
+        const { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy } = 
+            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
         
-        const form = modal.querySelector('form');
-        if (form) {
-            form.reset();
+        if (window.app) {
+            db = getFirestore(window.app);
+            console.log('✅ Firestore initialized');
+            
+            // Load user data
+            await loadUserProfile();
+            await loadProjects();
         }
+    } catch (error) {
+        console.error('Firestore initialization error:', error);
+    }
+}
+
+// ========================================
+// USER PROFILE FUNCTIONS
+// ========================================
+
+window.openProfile = function() {
+    document.getElementById('dashboardSection').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('profileSection').style.display = 'block';
+    
+    // Load existing profile
+    if (userProfile) {
+        document.getElementById('profileName').value = userProfile.name || '';
+        document.getElementById('profileEmail').value = userProfile.email || '';
+        document.getElementById('profileOrganization').value = userProfile.organization || '';
+        document.getElementById('profilePosition').value = userProfile.position || '';
+        document.getElementById('profilePhone').value = userProfile.phone || '';
+        document.getElementById('profileDepartment').value = userProfile.department || '';
+        document.getElementById('profileAddress').value = userProfile.address || '';
+    } else {
+        // Set email from localStorage
+        document.getElementById('profileEmail').value = localStorage.getItem('userEmail') || '';
     }
 };
 
-window.addEventListener('click', function(event) {
-    if (event.target.classList.contains('modal')) {
-        closeModal(event.target.id);
+window.closeProfile = function() {
+    document.getElementById('profileSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+};
+
+window.saveProfile = async function(event) {
+    event.preventDefault();
+    
+    const profileData = {
+        name: document.getElementById('profileName').value.trim(),
+        email: document.getElementById('profileEmail').value.trim(),
+        organization: document.getElementById('profileOrganization').value.trim(),
+        position: document.getElementById('profilePosition').value.trim(),
+        phone: document.getElementById('profilePhone').value.trim(),
+        department: document.getElementById('profileDepartment').value.trim(),
+        address: document.getElementById('profileAddress').value.trim(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    try {
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const userId = window.auth.currentUser.uid;
+        await setDoc(doc(db, 'users', userId), profileData);
+        
+        userProfile = profileData;
+        localStorage.setItem('userName', profileData.name);
+        
+        showAlert('profileAlert', '✅ บันทึกข้อมูลสำเร็จ!', 'success');
+        
+        setTimeout(() => {
+            closeProfile();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Save profile error:', error);
+        showAlert('profileAlert', '❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
     }
-});
+};
+
+async function loadUserProfile() {
+    if (!window.auth.currentUser) return;
+    
+    try {
+        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const userId = window.auth.currentUser.uid;
+        const docRef = doc(db, 'users', userId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            userProfile = docSnap.data();
+            localStorage.setItem('userName', userProfile.name);
+        }
+    } catch (error) {
+        console.error('Load profile error:', error);
+    }
+}
 
 // ========================================
-// STEP NAVIGATION FUNCTIONS
+// DASHBOARD FUNCTIONS
+// ========================================
+
+window.showDashboard = function() {
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('profileSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+    
+    updateDashboardStats();
+    displayProjects();
+};
+
+window.createNewProject = function() {
+    // Reset project data
+    currentProject = JSON.parse(JSON.stringify(projectData));
+    currentProject.id = 'proj_' + Date.now();
+    currentProject.createdAt = new Date().toISOString();
+    currentProject.userId = window.auth.currentUser.uid;
+    
+    // Reset step status
+    Object.keys(stepStatus).forEach(key => stepStatus[key] = false);
+    updateStepIndicators();
+    
+    // Go to Step 1
+    currentStep = 1;
+    document.getElementById('dashboardSection').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    updateStep();
+};
+
+window.openProject = async function(projectId) {
+    try {
+        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const docRef = doc(db, 'projects', projectId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            currentProject = { id: projectId, ...docSnap.data() };
+            
+            // Load data into forms
+            loadProjectData();
+            
+            // Show main app
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            
+            currentStep = 1;
+            updateStep();
+        }
+    } catch (error) {
+        console.error('Open project error:', error);
+        alert('❌ ไม่สามารถเปิดโครงการได้');
+    }
+};
+
+window.deleteProject = async function(projectId) {
+    if (!confirm('คุณต้องการลบโครงการนี้หรือไม่?\nการดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
+        return;
+    }
+    
+    try {
+        const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        await deleteDoc(doc(db, 'projects', projectId));
+        
+        projects = projects.filter(p => p.id !== projectId);
+        
+        showToast('✅ ลบโครงการสำเร็จ');
+        displayProjects();
+        updateDashboardStats();
+        
+    } catch (error) {
+        console.error('Delete project error:', error);
+        alert('❌ ไม่สามารถลบโครงการได้');
+    }
+};
+
+async function loadProjects() {
+    if (!window.auth.currentUser) return;
+    
+    try {
+        const { collection, query, where, getDocs, orderBy } = 
+            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const userId = window.auth.currentUser.uid;
+        const q = query(
+            collection(db, 'projects'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        projects = [];
+        
+        querySnapshot.forEach((doc) => {
+            projects.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        console.log(`Loaded ${projects.length} projects`);
+        
+    } catch (error) {
+        console.error('Load projects error:', error);
+    }
+}
+
+function displayProjects() {
+    const tbody = document.getElementById('projectsTableBody');
+    if (!tbody) return;
+    
+    if (projects.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 60px; color: #94a3b8;">
+                    <div style="font-size: 3rem; margin-bottom: 16px;">📭</div>
+                    <div style="font-size: 1.2rem; margin-bottom: 8px;">ยังไม่มีโครงการ</div>
+                    <div style="font-size: 0.95rem;">คลิก "สร้างโครงการใหม่" เพื่อเริ่มต้น</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = projects.map(project => `
+        <tr>
+            <td>
+                <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${project.name || 'ไม่มีชื่อ'}</div>
+                <div style="font-size: 0.85rem; color: #64748b;">${project.description || '-'}</div>
+            </td>
+            <td style="white-space: nowrap;">
+                ${project.createdAt ? new Date(project.createdAt).toLocaleDateString('th-TH') : '-'}
+            </td>
+            <td>
+                <span class="status-badge ${project.status === 'completed' ? 'status-completed' : 'status-draft'}">
+                    ${project.status === 'completed' ? '✅ เสร็จสมบูรณ์' : '⏳ กำลังดำเนินการ'}
+                </span>
+            </td>
+            <td style="white-space: nowrap;">
+                ฿${(project.budget || 0).toLocaleString('th-TH')}
+            </td>
+            <td style="font-weight: 600; color: #2563eb;">
+                ${project.sroiRatio ? project.sroiRatio.toFixed(2) + ' : 1' : '-'}
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-primary btn-icon" onclick="openProject('${project.id}')" title="เปิดโครงการ">
+                        📂
+                    </button>
+                    <button type="button" class="btn btn-danger btn-icon" onclick="deleteProject('${project.id}')" title="ลบโครงการ">
+                        🗑️
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateDashboardStats() {
+    const total = projects.length;
+    const inProgress = projects.filter(p => p.status === 'draft').length;
+    const completed = projects.filter(p => p.status === 'completed').length;
+    const avgSROI = completed > 0 
+        ? (projects.filter(p => p.sroiRatio).reduce((sum, p) => sum + p.sroiRatio, 0) / completed)
+        : 0;
+    
+    document.getElementById('totalProjects').textContent = total;
+    document.getElementById('inProgressProjects').textContent = inProgress;
+    document.getElementById('completedProjects').textContent = completed;
+    document.getElementById('avgSROI').textContent = avgSROI.toFixed(2);
+}
+
+window.filterProjects = function() {
+    const searchText = document.getElementById('searchProject').value.toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+    
+    const rows = document.querySelectorAll('#projectsTableBody tr');
+    
+    rows.forEach(row => {
+        const projectName = row.cells[0]?.textContent.toLowerCase() || '';
+        const projectStatus = row.cells[2]?.textContent.includes('เสร็จสมบูรณ์') ? 'completed' : 'draft';
+        
+        const matchSearch = projectName.includes(searchText);
+        const matchStatus = !status || projectStatus === status;
+        
+        row.style.display = (matchSearch && matchStatus) ? '' : 'none';
+    });
+};
+
+// ========================================
+// PROJECT DATA FUNCTIONS
+// ========================================
+
+async function saveProjectData() {
+    if (!currentProject || !db) return;
+    
+    try {
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        currentProject.updatedAt = new Date().toISOString();
+        
+        await setDoc(doc(db, 'projects', currentProject.id), currentProject);
+        
+        console.log('Project saved:', currentProject.id);
+        
+    } catch (error) {
+        console.error('Save project error:', error);
+    }
+}
+
+function loadProjectData() {
+    if (!currentProject) return;
+    
+    // Load Step 1 data
+    document.getElementById('projectName').value = currentProject.name || '';
+    document.getElementById('projectDescription').value = currentProject.description || '';
+    document.getElementById('projectOrganization').value = currentProject.organization || '';
+    document.getElementById('projectStartDate').value = currentProject.startDate || '';
+    document.getElementById('projectEndDate').value = currentProject.endDate || '';
+    document.getElementById('projectBudget').value = currentProject.budget || '';
+    document.getElementById('discountRate').value = currentProject.discountRate || 3;
+    
+    // Update step status
+    if (currentProject.name) stepStatus.step1 = true;
+    if (currentProject.stakeholders?.length > 0) stepStatus.step2 = true;
+    if (currentProject.outcomes?.length > 0) stepStatus.step3 = true;
+    
+    updateStepIndicators();
+}
+
+// ========================================
+// STEP NAVIGATION
 // ========================================
 
 window.nextStep = function() {
-    if (currentStep < totalSteps) {
-        currentStep++;
-        updateStep();
+    if (validateCurrentStep()) {
+        if (currentStep < totalSteps) {
+            currentStep++;
+            updateStep();
+        }
     }
 };
 
@@ -64,503 +406,95 @@ window.goToStep = function(stepNumber) {
 };
 
 function updateStep() {
-    const allSteps = document.querySelectorAll('.step-content');
-    allSteps.forEach(content => {
-        content.classList.remove('active');
-        content.style.display = 'none';
+    // Hide all steps
+    document.querySelectorAll('.step-content').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = 'none';
     });
     
+    // Show current step
     const currentContent = document.getElementById(`step${currentStep}`);
     if (currentContent) {
         currentContent.classList.add('active');
         currentContent.style.display = 'block';
     }
     
-    const stepButtons = document.querySelectorAll('.step');
-    stepButtons.forEach((step, index) => {
+    // Update step buttons
+    document.querySelectorAll('.step').forEach((el, index) => {
+        el.classList.remove('active');
         if (index + 1 === currentStep) {
-            step.classList.add('active');
-        } else {
-            step.classList.remove('active');
+            el.classList.add('active');
         }
     });
     
+    // Update navigation buttons
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     
-    if (prevBtn) {
-        prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-flex';
-    }
-    
-    if (nextBtn) {
-        nextBtn.style.display = currentStep === totalSteps ? 'none' : 'inline-flex';
-    }
-    
-    // Update tables based on current step
-    if (currentStep === 2) {
-        updateStakeholderTable();
-    } else if (currentStep === 3) {
-        updateOutcomeTable();
-    } else if (currentStep === 4) {
-        updateValuationTable();
-    } else if (currentStep === 5) {
-        // Just prepare the form - calculation happens on button click
-    }
+    if (prevBtn) prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-flex';
+    if (nextBtn) nextBtn.style.display = currentStep === totalSteps ? 'none' : 'inline-flex';
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ========================================
-// STAKEHOLDER FUNCTIONS
-// ========================================
-
-window.addStakeholder = function() {
-    openModal('stakeholderModal');
-};
-
-window.saveStakeholder = function() {
-    const name = document.getElementById('stakeholderName').value.trim();
-    const count = document.getElementById('stakeholderCount').value;
-    const type = document.getElementById('stakeholderType').value;
-    const description = document.getElementById('stakeholderDescription').value.trim();
-    
-    if (!name || !count || !type) {
-        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
-        return;
-    }
-    
-    const stakeholder = {
-        id: Date.now(),
-        name: name,
-        count: parseInt(count),
-        type: type,
-        description: description
-    };
-    
-    stakeholders.push(stakeholder);
-    updateStakeholderTable();
-    updateOutcomeStakeholderOptions();
-    closeModal('stakeholderModal');
-    
-    showToast('✅ เพิ่มผู้มีส่วนได้ส่วนเสียสำเร็จ!');
-};
-
-window.deleteStakeholder = function(id) {
-    if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
-        stakeholders = stakeholders.filter(s => s.id !== id);
-        updateStakeholderTable();
-        updateOutcomeStakeholderOptions();
-        showToast('✅ ลบข้อมูลสำเร็จ');
-    }
-};
-
-function updateStakeholderTable() {
-    const tbody = document.getElementById('stakeholderTableBody');
-    if (!tbody) return;
-    
-    if (stakeholders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผู้มีส่วนได้ส่วนเสีย" เพื่อเริ่มต้น)</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = stakeholders.map(s => `
-        <tr>
-            <td>${s.name}</td>
-            <td>${s.count.toLocaleString()}</td>
-            <td><span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${s.type}</span></td>
-            <td>${s.description || '-'}</td>
-            <td>
-                <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteStakeholder(${s.id})">
-                    🗑️ ลบ
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// ========================================
-// OUTCOME FUNCTIONS
-// ========================================
-
-window.addOutcome = function() {
-    if (stakeholders.length === 0) {
-        alert('❌ กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
-        return;
-    }
-    
-    updateOutcomeStakeholderOptions();
-    openModal('outcomeModal');
-};
-
-function updateOutcomeStakeholderOptions() {
-    const select = document.getElementById('outcomeStakeholder');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">-- เลือก --</option>' +
-        stakeholders.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-}
-
-window.saveOutcome = function() {
-    const stakeholder = document.getElementById('outcomeStakeholder').value;
-    const name = document.getElementById('outcomeName').value.trim();
-    const type = document.getElementById('outcomeType').value;
-    const indicator = document.getElementById('outcomeIndicator').value.trim();
-    
-    if (!stakeholder || !name || !type || !indicator) {
-        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
-        return;
-    }
-    
-    const outcome = {
-        id: Date.now(),
-        stakeholder: stakeholder,
-        name: name,
-        type: type,
-        indicator: indicator,
-        quantity: 0,
-        unitValue: 0,
-        deadweight: 0,
-        attribution: 0,
-        displacement: 0,
-        duration: 1
-    };
-    
-    outcomes.push(outcome);
-    updateOutcomeTable();
-    closeModal('outcomeModal');
-    
-    showToast('✅ เพิ่มผลลัพธ์สำเร็จ!');
-};
-
-window.deleteOutcome = function(id) {
-    if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
-        outcomes = outcomes.filter(o => o.id !== id);
-        updateOutcomeTable();
-        showToast('✅ ลบข้อมูลสำเร็จ');
-    }
-};
-
-function updateOutcomeTable() {
-    const tbody = document.getElementById('outcomeTableBody');
-    if (!tbody) return;
-    
-    if (outcomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผลลัพธ์" เพื่อเริ่มต้น)</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = outcomes.map(o => `
-        <tr>
-            <td>${o.stakeholder}</td>
-            <td>${o.name}</td>
-            <td><span style="background: ${o.type === 'ผลกระทบเชิงบวก' ? '#d1fae5' : '#fee2e2'}; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${o.type}</span></td>
-            <td>${o.indicator}</td>
-            <td>
-                <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteOutcome(${o.id})">
-                    🗑️ ลบ
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// ========================================
-// VALUATION FUNCTIONS (STEP 4)
-// ========================================
-
-function updateValuationTable() {
-    const tbody = document.getElementById('valuationTableBody');
-    if (!tbody) return;
-    
-    if (outcomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;"><div style="font-size: 1.2rem; margin-bottom: 8px;">📋 ยังไม่มีผลลัพธ์</div><div>กรุณากลับไปขั้นตอนที่ 3 เพื่อเพิ่มผลลัพธ์ก่อน</div></td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = outcomes.map(outcome => `
-        <tr>
-            <td style="font-weight: 500;">${outcome.name}</td>
-            <td>
-                <input type="number" 
-                       id="quantity_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 120px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="0"
-                       min="0"
-                       value="${outcome.quantity || ''}"
-                       onchange="saveValuation(${outcome.id}, 'quantity', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       id="unitValue_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 120px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="0"
-                       min="0"
-                       value="${outcome.unitValue || ''}"
-                       onchange="saveValuation(${outcome.id}, 'unitValue', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       id="deadweight_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="0"
-                       min="0"
-                       max="100"
-                       value="${outcome.deadweight || ''}"
-                       onchange="saveValuation(${outcome.id}, 'deadweight', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       id="attribution_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="0"
-                       min="0"
-                       max="100"
-                       value="${outcome.attribution || ''}"
-                       onchange="saveValuation(${outcome.id}, 'attribution', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       id="displacement_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="0"
-                       min="0"
-                       max="100"
-                       value="${outcome.displacement || ''}"
-                       onchange="saveValuation(${outcome.id}, 'displacement', this.value)">
-            </td>
-            <td>
-                <input type="number" 
-                       id="duration_${outcome.id}" 
-                       class="form-control" 
-                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
-                       placeholder="1"
-                       min="1"
-                       value="${outcome.duration || 1}"
-                       onchange="saveValuation(${outcome.id}, 'duration', this.value)">
-            </td>
-        </tr>
-    `).join('');
-}
-
-window.saveValuation = function(outcomeId, field, value) {
-    const outcome = outcomes.find(o => o.id === outcomeId);
-    if (outcome) {
-        outcome[field] = parseFloat(value) || 0;
-    }
-};
-
-// ========================================
-// SROI CALCULATION FUNCTIONS (STEP 5)
-// ========================================
-
-window.calculateSROI = function() {
-    const investmentInput = document.getElementById('investmentAmount');
-    const investment = parseFloat(investmentInput.value) || 0;
-    
-    if (investment <= 0) {
-        alert('❌ กรุณากรอกต้นทุนการลงทุนที่มากกว่า 0');
-        investmentInput.focus();
-        return;
-    }
-    
-    if (outcomes.length === 0) {
-        alert('❌ ไม่มีข้อมูลผลลัพธ์\nกรุณากลับไปเพิ่มข้อมูลใน Step 3 และ Step 4');
-        return;
-    }
-    
-    // Calculate results
-    let totalValue = 0;
-    let results = [];
-    
-    outcomes.forEach(outcome => {
-        const initialValue = (outcome.quantity || 0) * (outcome.unitValue || 0);
-        const deadweightFactor = 1 - ((outcome.deadweight || 0) / 100);
-        const attributionFactor = 1 - ((outcome.attribution || 0) / 100);
-        const displacementFactor = 1 - ((outcome.displacement || 0) / 100);
+function validateCurrentStep() {
+    if (currentStep === 1) {
+        const name = document.getElementById('projectName').value.trim();
+        const budget = document.getElementById('projectBudget').value;
         
-        const netImpact = initialValue * deadweightFactor * attributionFactor * displacementFactor;
-        const duration = outcome.duration || 1;
-        const npv = netImpact * duration;
+        if (!name || !budget) {
+            alert('❌ กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+            return false;
+        }
         
-        totalValue += npv;
+        // Save Step 1 data
+        currentProject.name = name;
+        currentProject.description = document.getElementById('projectDescription').value.trim();
+        currentProject.organization = document.getElementById('projectOrganization').value.trim();
+        currentProject.startDate = document.getElementById('projectStartDate').value;
+        currentProject.endDate = document.getElementById('projectEndDate').value;
+        currentProject.budget = parseFloat(budget);
+        currentProject.discountRate = parseFloat(document.getElementById('discountRate').value) || 3;
         
-        results.push({
-            outcome: outcome,
-            initialValue: initialValue,
-            netImpact: netImpact,
-            npv: npv
-        });
-    });
-    
-    // Calculate SROI Ratio
-    const sroiRatio = investment > 0 ? (totalValue / investment) : 0;
-    const netSocialValue = totalValue - investment;
-    
-    // Update display
-    document.getElementById('sroiRatio').textContent = sroiRatio.toFixed(2) + ' : 1';
-    document.getElementById('investmentDisplay').textContent = '฿' + investment.toLocaleString('th-TH', {maximumFractionDigits: 0});
-    document.getElementById('totalNPV').textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
-    document.getElementById('netSocialValue').textContent = '฿' + netSocialValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
-    
-    // Show results section
-    document.getElementById('resultsSection').style.display = 'block';
-    
-    // Update summary table
-    updateSummaryTableWithResults(results);
-    
-    // Create chart
-    createSROIChart(investment, totalValue, results);
-    
-    // Show success toast
-    showToast('✅ คำนวณ SROI เรียบร้อยแล้ว!');
-    
-    // Scroll to results
-    setTimeout(() => {
-        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-};
-
-function updateSummaryTableWithResults(results) {
-    const tbody = document.getElementById('summaryTableBody');
-    if (!tbody) return;
-    
-    if (results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">ไม่มีข้อมูล</td></tr>';
-        return;
+        stepStatus.step1 = true;
+        saveProjectData();
     }
     
-    tbody.innerHTML = results.map(r => `
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 12px;">${r.outcome.stakeholder}</td>
-            <td style="padding: 12px;">${r.outcome.name}</td>
-            <td style="padding: 12px;">
-                <span style="background: ${r.outcome.type === 'ผลกระทบเชิงบวก' ? '#d1fae5' : '#fee2e2'}; 
-                             padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">
-                    ${r.outcome.type}
-                </span>
-            </td>
-            <td style="padding: 12px; text-align: right; font-weight: 500;">
-                ฿${r.initialValue.toLocaleString('th-TH', {maximumFractionDigits: 0})}
-            </td>
-            <td style="padding: 12px; text-align: center;">${r.outcome.deadweight || 0}%</td>
-            <td style="padding: 12px; text-align: center;">${r.outcome.attribution || 0}%</td>
-            <td style="padding: 12px; text-align: center;">${r.outcome.displacement || 0}%</td>
-            <td style="padding: 12px; text-align: right; font-weight: 500; color: #059669;">
-                ฿${r.netImpact.toLocaleString('th-TH', {maximumFractionDigits: 0})}
-            </td>
-            <td style="padding: 12px; text-align: right; font-weight: 600; color: #2563eb;">
-                ฿${r.npv.toLocaleString('th-TH', {maximumFractionDigits: 0})}
-            </td>
-        </tr>
-    `).join('');
+    updateStepIndicators();
+    return true;
 }
 
-function createSROIChart(investment, totalValue, results) {
-    const ctx = document.getElementById('sroiChart');
-    if (!ctx) return;
-    
-    if (sroiChart) {
-        sroiChart.destroy();
-    }
-    
-    const labels = results.map(r => r.outcome.name);
-    const npvData = results.map(r => r.npv);
-    const initialData = results.map(r => r.initialValue);
-    
-    sroiChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'มูลค่าเริ่มต้น',
-                    data: initialData,
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 2
-                },
-                {
-                    label: 'NPV (หลังปรับค่า)',
-                    data: npvData,
-                    backgroundColor: 'rgba(16, 185, 129, 0.5)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 2
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'เปรียบเทียบมูลค่าเริ่มต้นและ NPV ของแต่ละผลลัพธ์',
-                    font: {
-                        size: 16,
-                        family: 'Sarabun'
-                    }
-                },
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        font: {
-                            family: 'Sarabun',
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += '฿' + context.parsed.y.toLocaleString('th-TH', {maximumFractionDigits: 0});
-                            return label;
-                        }
-                    },
-                    bodyFont: {
-                        family: 'Sarabun'
-                    },
-                    titleFont: {
-                        family: 'Sarabun'
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '฿' + value.toLocaleString('th-TH');
-                        },
-                        font: {
-                            family: 'Sarabun'
-                        }
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            family: 'Sarabun'
-                        }
-                    }
-                }
-            }
+function updateStepIndicators() {
+    document.querySelectorAll('.step').forEach((el, index) => {
+        const stepKey = `step${index + 1}`;
+        el.classList.remove('completed');
+        
+        if (stepStatus[stepKey]) {
+            el.classList.add('completed');
         }
     });
 }
 
 // ========================================
-// TOAST NOTIFICATION
+// UTILITY FUNCTIONS
 // ========================================
+
+function showAlert(elementId, message, type = 'error') {
+    const alertElement = document.getElementById(elementId);
+    if (alertElement) {
+        alertElement.innerHTML = `
+            <div style="padding: 12px; margin-bottom: 16px; border-radius: 6px; 
+                 background: ${type === 'success' ? '#d1fae5' : '#fee2e2'};
+                 color: ${type === 'success' ? '#065f46' : '#991b1b'};
+                 border: 1px solid ${type === 'success' ? '#a7f3d0' : '#fecaca'};">
+                ${message}
+            </div>
+        `;
+        setTimeout(() => {
+            alertElement.innerHTML = '';
+        }, 5000);
+    }
+}
 
 function showToast(message) {
     const toast = document.createElement('div');
@@ -589,262 +523,47 @@ function showToast(message) {
     }, 3000);
 }
 
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
 // ========================================
-// PDF GENERATION
+// AUTHENTICATION
 // ========================================
 
-window.generatePDF = function() {
-    alert('ฟังก์ชันสร้าง PDF กำลังพัฒนา\nจะเปิดใช้งานในเร็วๆ นี้');
+window.handleLogout = function() {
+    if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+        window.auth.signOut().then(() => {
+            localStorage.clear();
+            location.reload();
+        });
+    }
+};
+
+window.showMainApp = function() {
+    const userName = localStorage.getItem('userName');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    
+    if (userNameDisplay) {
+        userNameDisplay.textContent = `สวัสดี, ${userName}`;
+    }
+    
+    document.getElementById('authScreen').style.display = 'none';
+    
+    // Show dashboard by default
+    showDashboard();
 };
 
 // ========================================
-// FIREBASE AUTHENTICATION
+// INITIALIZATION
 // ========================================
 
-function initializeAuth() {
-    console.log('Initializing authentication...');
-    
-    window.showAlert = function(elementId, message, type = 'error') {
-        const alertElement = document.getElementById(elementId);
-        if (alertElement) {
-            alertElement.innerHTML = `
-                <div style="padding: 12px; margin-bottom: 16px; border-radius: 6px; 
-                     background: ${type === 'success' ? '#d1fae5' : '#fee2e2'};
-                     color: ${type === 'success' ? '#065f46' : '#991b1b'};
-                     border: 1px solid ${type === 'success' ? '#a7f3d0' : '#fecaca'};">
-                    ${message}
-                </div>
-            `;
-            setTimeout(() => {
-                alertElement.innerHTML = '';
-            }, 5000);
-        }
-    };
-
-    window.handleRegister = async function(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('registerName').value.trim();
-        const email = document.getElementById('registerEmail').value.trim();
-        const password = generatePassword();
-        
-        if (!name || !email) {
-            showAlert('registerAlert', '❌ กรุณากรอกชื่อและอีเมล', 'error');
-            return;
-        }
-        
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '⏳ กำลังสมัครสมาชิก...';
-        submitBtn.disabled = true;
-        
-        try {
-            const { createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
-            await updateProfile(userCredential.user, { displayName: name });
-            await sendPasswordResetEmail(window.auth, email);
-            
-            showAlert('registerAlert', `✅ สมัครสมาชิกสำเร็จ! อีเมลสำหรับตั้งรหัสผ่านได้ถูกส่งไปยัง ${email} แล้ว`, 'success');
-            
-            document.getElementById('registerName').value = '';
-            document.getElementById('registerEmail').value = '';
-            document.getElementById('registerOrganization').value = '';
-            
-            setTimeout(() => toggleForm(), 3000);
-            
-        } catch (error) {
-            console.error('Registration Error:', error);
-            let errorMessage = '❌ เกิดข้อผิดพลาดในการสมัครสมาชิก';
-            
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = '❌ อีเมลนี้ถูกใช้งานแล้ว';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = '❌ รูปแบบอีเมลไม่ถูกต้อง';
-            }
-            
-            showAlert('registerAlert', errorMessage, 'error');
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    };
-
-    window.handleLogin = async function(event) {
-        event.preventDefault();
-        
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        
-        if (!email || !password) {
-            showAlert('loginAlert', '❌ กรุณากรอกอีเมลและรหัสผ่าน', 'error');
-            return;
-        }
-        
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '⏳ กำลังเข้าสู่ระบบ...';
-        submitBtn.disabled = true;
-        
-        try {
-            const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const userCredential = await signInWithEmailAndPassword(window.auth, email, password);
-            
-            showAlert('loginAlert', '✅ เข้าสู่ระบบสำเร็จ!', 'success');
-            
-            localStorage.setItem('userName', userCredential.user.displayName || email);
-            localStorage.setItem('userEmail', userCredential.user.email);
-            
-            setTimeout(() => showMainApp(), 500);
-            
-        } catch (error) {
-            console.error('Login Error:', error);
-            let errorMessage = '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            showAlert('loginAlert', errorMessage, 'error');
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    };
-
-    window.handleGoogleSignIn = async function() {
-        try {
-            const { GoogleAuthProvider, signInWithPopup } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
-            
-            const provider = new GoogleAuthProvider();
-            const result = await signInWithPopup(window.auth, provider);
-            
-            localStorage.setItem('userName', result.user.displayName || result.user.email);
-            localStorage.setItem('userEmail', result.user.email);
-            
-            showAlert('loginAlert', '✅ เข้าสู่ระบบด้วย Google สำเร็จ!', 'success');
-            
-            setTimeout(() => showMainApp(), 500);
-            
-        } catch (error) {
-            console.error('Google Sign-in Error:', error);
-            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                showAlert('loginAlert', '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google', 'error');
-            }
-        }
-    };
-
-    window.handleLogout = function() {
-        if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-            window.auth.signOut().then(() => {
-                localStorage.clear();
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('mainApp').style.display = 'none';
-                currentStep = 1;
-                stakeholders = [];
-                outcomes = [];
-                updateStep();
-            });
-        }
-    };
-
-    window.showMainApp = function() {
-        const userName = localStorage.getItem('userName');
-        const userNameDisplay = document.getElementById('userNameDisplay');
-        
-        if (userNameDisplay) {
-            userNameDisplay.textContent = `สวัสดี, ${userName}`;
-        }
-        
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        
-        currentStep = 1;
-        setTimeout(() => updateStep(), 100);
-    };
-
-    window.toggleForm = function() {
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        
-        const loginAlert = document.getElementById('loginAlert');
-        const registerAlert = document.getElementById('registerAlert');
-        if (loginAlert) loginAlert.innerHTML = '';
-        if (registerAlert) registerAlert.innerHTML = '';
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-        }
-    };
-
-    function generatePassword(length = 12) {
-        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-        let password = '';
-        for (let i = 0; i < length; i++) {
-            password += charset.charAt(Math.floor(Math.random() * charset.length));
-        }
-        return password;
-    }
-
-    if (window.auth) {
-        window.auth.onAuthStateChanged((user) => {
-            if (user) {
-                localStorage.setItem('userName', user.displayName || user.email);
-                localStorage.setItem('userEmail', user.email);
-                showMainApp();
-            } else {
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('mainApp').style.display = 'none';
-            }
-        });
-    }
-    
-    console.log('✅ SROI-BU Application initialized');
-}
-
-// ========================================
-// INITIALIZE APP
-// ========================================
-
-console.log('App.js loaded with SROI calculation features');
+console.log('🚀 SROI Calculator with Firebase loaded');
 
 if (window.auth) {
-    initializeAuth();
-} else {
-    window.addEventListener('firebaseReady', () => {
-        initializeAuth();
+    window.auth.onAuthStateChanged((user) => {
+        if (user) {
+            initializeFirestore();
+            localStorage.setItem('userEmail', user.email);
+            showMainApp();
+        } else {
+            document.getElementById('authScreen').style.display = 'flex';
+        }
     });
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => updateStep(), 100);
-    });
-} else {
-    setTimeout(() => updateStep(), 100);
 }
