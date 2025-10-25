@@ -440,7 +440,216 @@
             color: #991b1b;
             border: 1px solid #fecaca;
         }
+/* Modal Overlay */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
 
+.modal.show {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Modal Content */
+.modal-content {
+    background-color: white;
+    margin: auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+    overflow: hidden;
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.close-modal {
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+    line-height: 1;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 28px;
+    max-height: calc(90vh - 180px);
+    overflow-y: auto;
+}
+
+.modal-form-group {
+    margin-bottom: 20px;
+}
+
+.modal-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.modal-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #334155;
+    font-size: 0.95rem;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.modal-form-group input,
+.modal-form-group select,
+.modal-form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: 'Sarabun', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: white;
+}
+
+.modal-form-group input:focus,
+.modal-form-group select:focus,
+.modal-form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-form-group input::placeholder,
+.modal-form-group textarea::placeholder {
+    color: #94a3b8;
+}
+
+.modal-form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
+}
+
+.modal-form-group small {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-family: 'Sarabun', sans-serif;
+}
+
+/* Modal Footer */
+.modal-footer {
+    padding: 20px 28px;
+    background: #f8fafc;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.modal-footer .btn {
+    min-width: 120px;
+    font-size: 1rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .modal-header {
+        padding: 20px;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    .modal-body {
+        padding: 20px;
+        max-height: calc(95vh - 160px);
+    }
+    
+    .modal-footer {
+        padding: 16px 20px;
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+}
+
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.2rem;
@@ -899,6 +1108,96 @@
     
     <!-- Main App Script - Load AFTER Firebase -->
     <script src="app.js"></script>
-    
+<!-- Modal: Add Stakeholder -->
+<div id="stakeholderModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>➕ เพิ่มผู้มีส่วนได้ส่วนเสีย</h2>
+            <button class="close-modal" onclick="closeModal('stakeholderModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="stakeholderForm">
+                <div class="modal-form-group">
+                    <label for="stakeholderName">ชื่อกลุ่ม <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="stakeholderName" required placeholder="เช่น เด็กนักเรียน, ครู, ชุมชน, ผู้ปกครอง">
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="stakeholderCount">จำนวนคน <span style="color: #ef4444;">*</span></label>
+                    <input type="number" id="stakeholderCount" required min="1" placeholder="เช่น 100">
+                    <small>กรอกจำนวนคนที่ได้รับผลกระทบจากโครงการ</small>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="stakeholderType">ประเภท <span style="color: #ef4444;">*</span></label>
+                    <select id="stakeholderType" required>
+                        <option value="">-- เลือกประเภท --</option>
+                        <option value="ผู้รับผลประโยชน์โดยตรง">ผู้รับผลประโยชน์โดยตรง</option>
+                        <option value="ผู้รับผลกระทบทางอ้อม">ผู้รับผลกระทบทางอ้อม</option>
+                        <option value="ผู้มีส่วนร่วม">ผู้มีส่วนร่วม</option>
+                        <option value="หน่วยงานภาครัฐ">หน่วยงานภาครัฐ</option>
+                        <option value="องค์กรภาคเอกชน">องค์กรภาคเอกชน</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="stakeholderDescription">คำอธิบาย</label>
+                    <textarea id="stakeholderDescription" placeholder="อธิบายเพิ่มเติมเกี่ยวกับกลุ่มนี้... (ถ้ามี)"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('stakeholderModal')">❌ ยกเลิก</button>
+            <button type="button" class="btn btn-success" onclick="saveStakeholder()">✅ บันทึก</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Outcome -->
+<div id="outcomeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>➕ เพิ่มผลลัพธ์</h2>
+            <button class="close-modal" onclick="closeModal('outcomeModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="outcomeForm">
+                <div class="modal-form-group">
+                    <label for="outcomeStakeholder">เลือกผู้มีส่วนได้ส่วนเสีย <span style="color: #ef4444;">*</span></label>
+                    <select id="outcomeStakeholder" required>
+                        <option value="">-- เลือกกลุ่มที่จะได้รับผลลัพธ์ --</option>
+                    </select>
+                    <small>เลือกกลุ่มที่จะได้รับผลลัพธ์นี้</small>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="outcomeName">ชื่อผลลัพธ์ <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="outcomeName" required placeholder="เช่น ทักษะการอ่านดีขึ้น, รายได้เพิ่มขึ้น">
+                    <small>ผลลัพธ์ที่เกิดขึ้นจากโครงการ</small>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="outcomeType">ประเภทผลกระทบ <span style="color: #ef4444;">*</span></label>
+                    <select id="outcomeType" required>
+                        <option value="">-- เลือกประเภท --</option>
+                        <option value="ผลกระทบเชิงบวก">✅ ผลกระทบเชิงบวก</option>
+                        <option value="ผลกระทบเชิงลบ">⚠️ ผลกระทบเชิงลบ</option>
+                    </select>
+                </div>
+                
+                <div class="modal-form-group">
+                    <label for="outcomeIndicator">ตัวชี้วัด <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="outcomeIndicator" required placeholder="เช่น คะแนนทดสอบเพิ่มขึ้น 20%, รายได้เพิ่มขึ้น 5,000 บาท">
+                    <small>วิธีการวัดผลลัพธ์นี้ (ตัวเลขหรือเปอร์เซ็นต์)</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('outcomeModal')">❌ ยกเลิก</button>
+            <button type="button" class="btn btn-success" onclick="saveOutcome()">✅ บันทึก</button>
+        </div>
+    </div>
+</div>    
 </body>
 </html>
