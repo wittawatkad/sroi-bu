@@ -30,6 +30,9 @@ async function saveProjectData() {
     // Clear previous timeout
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
 
+    // Update UI to show saving status
+    updateSaveStatus('saving');
+
     // Set new timeout for auto-save (debounce)
     autoSaveTimeout = setTimeout(async () => {
         try {
@@ -56,11 +59,85 @@ async function saveProjectData() {
 
             console.log('✅ Project auto-saved');
             updateProjectTitle();
+            updateSaveStatus('saved');
         } catch (error) {
             console.error('Error saving project:', error);
+            updateSaveStatus('error');
         }
     }, 1000); // Save after 1 second of no changes
 }
+
+function updateSaveStatus(status) {
+    const statusIcon = document.getElementById('saveStatusIcon');
+    const statusText = document.getElementById('saveStatusText');
+    
+    if (!statusIcon || !statusText) return;
+    
+    const now = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    
+    switch(status) {
+        case 'saving':
+            statusIcon.textContent = '⏳';
+            statusText.textContent = 'กำลังบันทึก...';
+            break;
+        case 'saved':
+            statusIcon.textContent = '✅';
+            statusText.textContent = `บันทึกล่าสุด: ${now}`;
+            break;
+        case 'error':
+            statusIcon.textContent = '❌';
+            statusText.textContent = 'บันทึกไม่สำเร็จ';
+            break;
+    }
+}
+
+async function saveAndBackToDashboard() {
+    if (!currentUser || !currentProjectId) {
+        backToDashboard();
+        return;
+    }
+
+    try {
+        // Force save immediately
+        showToast('⏳ กำลังบันทึกโครงการ...');
+        
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
+
+        const projectData = {
+            userId: currentUser.uid,
+            projectName: document.getElementById('projectName')?.value || 'โครงการใหม่',
+            organization: document.getElementById('organization')?.value || '',
+            duration: parseInt(document.getElementById('duration')?.value) || 1,
+            startYear: parseInt(document.getElementById('startYear')?.value) || new Date().getFullYear(),
+            objective: document.getElementById('objective')?.value || '',
+            totalCost: parseFloat(document.getElementById('totalCost')?.value) || 0,
+            discountRate: parseFloat(document.getElementById('discountRate')?.value) || 3.5,
+            stakeholders: stakeholders,
+            outcomes: outcomes,
+            completedSteps: completedSteps,
+            lastUpdated: new Date().toISOString(),
+            updatedAt: new Date()
+        };
+
+        const projectRef = doc(window.db, 'projects', currentProjectId);
+        await setDoc(projectRef, projectData, { merge: true });
+
+        console.log('✅ Project saved successfully');
+        showToast('✅ บันทึกโครงการสำเร็จ!');
+        
+        // Wait a bit then go back
+        setTimeout(() => {
+            backToDashboard();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error saving project:', error);
+        showToast('❌ เกิดข้อผิดพลาดในการบันทึก');
+    }
+}
+
+// Make it globally accessible
+window.saveAndBackToDashboard = saveAndBackToDashboard;
 
 async function loadProjectData(projectId) {
     try {
@@ -316,7 +393,39 @@ async function deleteProject(projectId) {
 // Make it globally accessible
 window.deleteProject = deleteProject;
 
-function backToDashboard() {
+async function backToDashboard() {
+    // Save before going back if there's a current project
+    if (currentProjectId && currentUser) {
+        try {
+            showToast('⏳ กำลังบันทึกโครงการ...');
+            
+            const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
+
+            const projectData = {
+                userId: currentUser.uid,
+                projectName: document.getElementById('projectName')?.value || 'โครงการใหม่',
+                organization: document.getElementById('organization')?.value || '',
+                duration: parseInt(document.getElementById('duration')?.value) || 1,
+                startYear: parseInt(document.getElementById('startYear')?.value) || new Date().getFullYear(),
+                objective: document.getElementById('objective')?.value || '',
+                totalCost: parseFloat(document.getElementById('totalCost')?.value) || 0,
+                discountRate: parseFloat(document.getElementById('discountRate')?.value) || 3.5,
+                stakeholders: stakeholders,
+                outcomes: outcomes,
+                completedSteps: completedSteps,
+                lastUpdated: new Date().toISOString(),
+                updatedAt: new Date()
+            };
+
+            const projectRef = doc(window.db, 'projects', currentProjectId);
+            await setDoc(projectRef, projectData, { merge: true });
+
+            console.log('✅ Project saved before returning to dashboard');
+        } catch (error) {
+            console.error('Error saving project:', error);
+        }
+    }
+    
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('dashboardScreen').style.display = 'block';
     document.getElementById('dashboardContainer').style.display = 'block';
