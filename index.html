@@ -358,10 +358,25 @@
             min-height: 200px;
             font-size: 1.1rem;
             font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
         }
 
         .new-project-card:hover {
             border-color: var(--color-primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -6px rgba(30, 58, 138, 0.3);
+        }
+
+        .new-project-card:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -4px rgba(30, 58, 138, 0.3);
+        }
+
+        .new-project-card * {
+            pointer-events: none;
+            user-select: none;
         }
 
         /* Main App */
