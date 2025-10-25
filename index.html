@@ -219,82 +219,107 @@
             text-decoration: underline;
         }
 
-        .alert {
-            padding: var(--space-md);
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: var(--space-lg) 0;
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .divider span {
+            padding: 0 var(--space-md);
+        }
+
+        .google-btn {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--color-border);
+            background: white;
             border-radius: var(--radius-md);
-            margin-bottom: var(--space-md);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
             font-family: 'Sarabun', sans-serif;
         }
 
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #10b981;
+        .google-btn:hover {
+            background: var(--color-light);
         }
 
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #ef4444;
+        .google-btn img {
+            width: 20px;
+            height: 20px;
+        }
+
+        #mainApp {
+            display: none;
         }
 
         .main-content {
-            padding: var(--space-xl) 0;
+            margin-top: var(--space-xl);
+            padding-bottom: var(--space-2xl);
         }
 
         .card {
             background: white;
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
             padding: var(--space-xl);
+            box-shadow: var(--shadow-md);
             margin-bottom: var(--space-lg);
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: var(--color-light);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: var(--space-lg) 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--color-primary);
-            transition: width 0.3s ease;
         }
 
         .steps-nav {
             display: flex;
             justify-content: space-between;
-            margin-bottom: var(--space-xl);
+            margin-bottom: var(--space-2xl);
             flex-wrap: wrap;
             gap: var(--space-sm);
         }
 
-        .step-nav-item {
+        .step {
             flex: 1;
-            min-width: 100px;
-            text-align: center;
+            min-width: 120px;
             padding: var(--space-sm);
+            text-align: center;
+            background: var(--color-light);
             border-radius: var(--radius-md);
             cursor: pointer;
             transition: all 0.2s ease;
-            background: var(--color-light);
-            border: 2px solid transparent;
             font-family: 'Sarabun', sans-serif;
         }
 
-        .step-nav-item.active {
-            background: var(--color-primary);
-            color: white;
-            border-color: var(--color-primary);
+        .step:hover {
+            background: #e2e8f0;
         }
 
-        .step-nav-item.completed {
-            background: var(--color-success);
+        .step.active {
+            background: var(--color-primary);
             color: white;
+        }
+
+        .step-number {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .step-name {
+            font-size: 0.85rem;
+            font-family: 'Sarabun', sans-serif;
         }
 
         .step-content {
@@ -310,16 +335,15 @@
         }
 
         .step-title {
-            font-size: 1.5rem;
             color: var(--color-primary);
+            font-size: 1.8rem;
             margin-bottom: var(--space-sm);
-            font-weight: 600;
             font-family: 'Sarabun', sans-serif;
         }
 
         .step-description {
             color: var(--color-text-light);
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-family: 'Sarabun', sans-serif;
         }
 
@@ -328,34 +352,17 @@
         }
 
         .section-title {
-            font-size: 1.1rem;
+            font-size: 1.3rem;
             color: var(--color-primary);
             margin-bottom: var(--space-md);
-            padding-bottom: var(--space-sm);
-            border-bottom: 2px solid var(--color-border);
-            font-weight: 600;
             font-family: 'Sarabun', sans-serif;
         }
 
-        .grid {
+        .input-group {
             display: grid;
-            gap: var(--space-md);
-        }
-
-        .grid-2 {
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        }
-
-        .grid-3 {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        }
-
-        .action-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-top: var(--space-xl);
-            padding-top: var(--space-xl);
-            border-top: 1px solid var(--color-border);
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
         }
 
         .table-container {
@@ -365,7 +372,7 @@
         .table {
             width: 100%;
             border-collapse: collapse;
-            font-family: 'Sarabun', sans-serif;
+            margin-top: var(--space-md);
         }
 
         .table th,
@@ -382,85 +389,28 @@
             color: var(--color-primary);
         }
 
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: var(--space-md);
-            margin-bottom: var(--space-xl);
-        }
-
-        .result-card {
-            background: white;
-            border: 1px solid var(--color-border);
-            border-left: 4px solid var(--color-primary);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .result-label {
-            font-size: 0.85rem;
-            color: var(--color-text-light);
-            margin-bottom: var(--space-xs);
-            font-family: 'Sarabun', sans-serif;
-        }
-
-        .result-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--color-primary);
-            font-family: 'Sarabun', sans-serif;
-        }
-
-        .sroi-display {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: var(--space-lg);
-            margin: var(--space-xl) 0;
-            flex-wrap: wrap;
-        }
-
-        .sroi-box {
+        .table tbody tr:hover {
             background: var(--color-light);
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-            flex: 1;
-            min-width: 200px;
-            max-width: 300px;
         }
 
-        .sroi-operator {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--color-primary);
-            font-family: 'Sarabun', sans-serif;
-        }
-
-        .sroi-result {
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-            color: white;
-            padding: var(--space-xl);
-            border-radius: var(--radius-lg);
-            text-align: center;
-            margin: var(--space-xl) 0;
-        }
-
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-xl);
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-2xl);
+            padding-top: var(--space-xl);
+            border-top: 1px solid var(--color-border);
         }
 
         .chart-container {
             background: white;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
             padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--space-lg);
         }
 
         .chart-title {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             color: var(--color-primary);
             margin-bottom: var(--space-md);
@@ -472,223 +422,208 @@
             height: 300px;
         }
 
+        .alert {
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.2rem;
             }
 
-            .step-nav-item {
-                font-size: 0.8rem;
+            .steps-nav {
+                flex-direction: column;
             }
 
-            .charts-grid {
+            .step {
+                min-width: 100%;
+            }
+
+            .input-group {
                 grid-template-columns: 1fr;
             }
 
-            .login-card {
-                padding: var(--space-lg);
+            .action-buttons {
+                flex-direction: column;
+                gap: var(--space-md);
             }
-        }
 
-        /* Loading Spinner */
-        .spinner {
-            border: 3px solid var(--color-light);
-            border-top: 3px solid var(--color-primary);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: var(--space-sm);
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="app">
-        <!-- Login/Register Screen -->
-        <div id="authScreen" class="login-container">
-            <div class="login-card">
-                <!-- Login Form -->
-                <div id="loginForm">
-                    <h2>เข้าสู่ระบบ</h2>
-                    <p style="color: var(--color-text-light); margin-bottom: var(--space-lg); font-family: 'Sarabun', sans-serif;">
-                        SROI Calculator - ระบบคำนวณผลตอบแทนทางสังคม
-                    </p>
-                    
-                    <div id="loginAlert"></div>
-                    
-                    <form onsubmit="handleLogin(event)">
-                        <div class="form-group">
-                            <label class="form-label">อีเมล</label>
-                            <input type="email" id="loginEmail" class="form-control" placeholder="your@email.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">รหัสผ่าน</label>
-                            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);">
-                            เข้าสู่ระบบ
-                        </button>
-                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);">
-                            เข้าสู่ระบบ
-                        </button>
-                    </form>
-                    
-                    <!-- Google Sign-in Button -->
-                    <div style="margin-top: var(--space-md); text-align: center;">
-                        <div style="display: flex; align-items: center; margin-bottom: var(--space-md);">
-                            <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
-                            <span style="padding: 0 var(--space-md); color: var(--color-text-light); font-size: 0.9rem;">หรือ</span>
-                            <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
-                        </div>
-                        <button type="button" onclick="handleGoogleSignIn()" class="btn" style="width: 100%; background: white; color: var(--color-text); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; gap: var(--space-sm);">
-                            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                                <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                            </svg>
-                            เข้าสู่ระบบด้วย Google
-                        </button>
+    <!-- Authentication Screen -->
+    <div id="authScreen" class="login-container">
+        <div class="login-card">
+            <!-- Login Form -->
+            <div id="loginForm">
+                <h2>เข้าสู่ระบบ</h2>
+                <p class="step-description" style="margin-bottom: var(--space-lg);">SROI Calculator - ระบบคำนวณผลตอบแทนทางสังคมจากการลงทุน</p>
+                
+                <div id="loginAlert"></div>
+                
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="loginEmail">อีเมล</label>
+                        <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" required>
                     </div>
                     
-                    <p class="form-link">
-                        ยังไม่มีบัญชี? 
-                        <a href="#" onclick="toggleForm(); return false;">สมัครสมาชิก</a>
-                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="loginPassword">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);">
+                        เข้าสู่ระบบ
+                    </button>
+                </form>
+                
+                <div class="divider">
+                    <span>หรือ</span>
                 </div>
+                
+                <button type="button" class="google-btn" onclick="handleGoogleSignIn()">
+                    <svg width="20" height="20" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                    </svg>
+                    เข้าสู่ระบบด้วย Google
+                </button>
+                
+                <div class="form-link">
+                    ยังไม่มีบัญชี? <a href="javascript:void(0)" onclick="toggleForm()">สมัครสมาชิก</a>
+                </div>
+            </div>
 
-                <!-- Register Form -->
-                <div id="registerForm" style="display: none;">
-                    <h2>สมัครสมาชิก</h2>
-                    <p style="color: var(--color-text-light); margin-bottom: var(--space-lg); font-family: 'Sarabun', sans-serif;">
-                        กรอกข้อมูลเพื่อสมัครใช้งาน<br>รหัสผ่านจะถูกส่งไปยังอีเมลของคุณ
-                    </p>
+            <!-- Register Form -->
+            <div id="registerForm" style="display: none;">
+                <h2>สมัครสมาชิก</h2>
+                <p class="step-description" style="margin-bottom: var(--space-lg);">สร้างบัญชีใหม่เพื่อเริ่มใช้งาน SROI Calculator</p>
+                
+                <div id="registerAlert"></div>
+                
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="registerName">ชื่อ-นามสกุล</label>
+                        <input type="text" class="form-control" id="registerName" placeholder="ชื่อ นามสกุล" required>
+                    </div>
                     
-                    <div id="registerAlert"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerEmail">อีเมล</label>
+                        <input type="email" class="form-control" id="registerEmail" placeholder="your@email.com" required>
+                    </div>
                     
-                    <form onsubmit="handleRegister(event)">
-                        <div class="form-group">
-                            <label class="form-label">ชื่อ-นามสกุล</label>
-                            <input type="text" id="registerName" class="form-control" placeholder="ชื่อ นามสกุล" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">อีเมล</label>
-                            <input type="email" id="registerEmail" class="form-control" placeholder="your@email.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">หน่วยงาน/องค์กร (ไม่บังคับ)</label>
-                            <input type="text" id="registerOrganization" class="form-control" placeholder="ชื่อหน่วยงาน">
-                        </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: var(--space-md);">
-                            สมัครสมาชิก
-                        </button>
-                    </form>
+                    <div class="form-group">
+                        <label class="form-label" for="registerOrganization">หน่วยงาน (ถ้ามี)</label>
+                        <input type="text" class="form-control" id="registerOrganization" placeholder="ชื่อหน่วยงาน">
+                    </div>
                     
-                    <p class="form-link">
-                        มีบัญชีอยู่แล้ว? 
-                        <a href="#" onclick="toggleForm(); return false;">เข้าสู่ระบบ</a>
-                    </p>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);">
+                        สมัครสมาชิก
+                    </button>
+                </form>
+                
+                <div class="form-link">
+                    มีบัญชีอยู่แล้ว? <a href="javascript:void(0)" onclick="toggleForm()">เข้าสู่ระบบ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp">
+        <div class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div>
+                        <h1>SROI Calculator</h1>
+                        <p class="subtitle">ระบบคำนวณผลตอบแทนทางสังคมจากการลงทุน</p>
+                    </div>
+                    <div>
+                        <span id="userNameDisplay" style="margin-right: var(--space-md);"></span>
+                        <button class="btn btn-secondary" onclick="handleLogout()">ออกจากระบบ</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Application -->
-        <div id="mainApp" style="display: none;">
-            <div class="header">
-                <div class="container">
-                    <div class="header-content">
-                        <div>
-                            <h1>SROI Calculator</h1>
-                            <p class="subtitle">ระบบคำนวณผลตอบแทนทางสังคมจากการลงทุน (Social Return on Investment)</p>
+        <div class="container">
+            <div class="main-content">
+                <div class="card">
+                    <div class="steps-nav">
+                        <div class="step active" onclick="goToStep(1)">
+                            <span class="step-number">1</span>
+                            <span class="step-name">ข้อมูลโครงการ</span>
                         </div>
-                        <div>
-                            <span id="userNameDisplay" style="margin-right: var(--space-md); font-family: 'Sarabun', sans-serif;"></span>
-                            <button class="btn btn-danger" onclick="handleLogout()">ออกจากระบบ</button>
+                        <div class="step" onclick="goToStep(2)">
+                            <span class="step-number">2</span>
+                            <span class="step-name">ผู้มีส่วนได้ส่วนเสีย</span>
+                        </div>
+                        <div class="step" onclick="goToStep(3)">
+                            <span class="step-number">3</span>
+                            <span class="step-name">ผลลัพธ์</span>
+                        </div>
+                        <div class="step" onclick="goToStep(4)">
+                            <span class="step-number">4</span>
+                            <span class="step-name">คำนวณมูลค่า</span>
+                        </div>
+                        <div class="step" onclick="goToStep(5)">
+                            <span class="step-number">5</span>
+                            <span class="step-name">ผลการคำนวณ</span>
+                        </div>
+                        <div class="step" onclick="goToStep(6)">
+                            <span class="step-number">6</span>
+                            <span class="step-name">สร้างรายงาน</span>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="main-content">
-                <div class="container">
-                    <div class="card">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressBar" style="width: 16.66%;"></div>
-                        </div>
-
-                        <div class="steps-nav" id="stepsNav">
-                            <div class="step-nav-item active" onclick="goToStep(1)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 1</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">ข้อมูลโครงการ</div>
-                            </div>
-                            <div class="step-nav-item" onclick="goToStep(2)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 2</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">ผู้มีส่วนได้ส่วนเสีย</div>
-                            </div>
-                            <div class="step-nav-item" onclick="goToStep(3)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 3</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">ผลลัพธ์</div>
-                            </div>
-                            <div class="step-nav-item" onclick="goToStep(4)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 4</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">การคำนวณ</div>
-                            </div>
-                            <div class="step-nav-item" onclick="goToStep(5)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 5</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">ผลลัพธ์</div>
-                            </div>
-                            <div class="step-nav-item" onclick="goToStep(6)">
-                                <div style="font-weight: 600; font-family: 'Sarabun', sans-serif;">ขั้นที่ 6</div>
-                                <div style="font-size: 0.75rem; font-family: 'Sarabun', sans-serif;">รายงาน</div>
-                            </div>
-                        </div>
-
+                    <div class="steps-container">
                         <!-- Step 1: Project Information -->
                         <div id="step1" class="step-content active">
                             <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 1: ข้อมูลโครงการและขอบเขตการประเมิน</h2>
-                                <p class="step-description">กรอกข้อมูลพื้นฐานของโครงการและกำหนดขอบเขตการประเมิน SROI</p>
+                                <h2 class="step-title">ขั้นตอนที่ 1: ข้อมูลโครงการ</h2>
+                                <p class="step-description">กรอกข้อมูลพื้นฐานของโครงการ</p>
                             </div>
                             
                             <div class="section">
-                                <h3 class="section-title">ข้อมูลทั่วไป</h3>
-                                <div class="grid grid-2">
+                                <h3 class="section-title">รายละเอียดโครงการ</h3>
+                                <div class="input-group">
                                     <div class="form-group">
-                                        <label class="form-label">ชื่อโครงการ *</label>
-                                        <input type="text" id="projectName" class="form-control" placeholder="ระบุชื่อโครงการ" required>
+                                        <label class="form-label">ชื่อโครงการ</label>
+                                        <input type="text" class="form-control" placeholder="กรอกชื่อโครงการ">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">องค์กร/หน่วยงาน *</label>
-                                        <input type="text" id="organization" class="form-control" placeholder="ชื่อองค์กร" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label class="form-label">รายละเอียดโครงการ</label>
-                                    <textarea id="projectDescription" class="form-control" rows="4" placeholder="อธิบายวัตถุประสงค์และกิจกรรมหลักของโครงการ"></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">ระยะเวลาและงบประมาณ</h3>
-                                <div class="grid grid-3">
-                                    <div class="form-group">
-                                        <label class="form-label">วันที่เริ่มโครงการ *</label>
-                                        <input type="date" id="startDate" class="form-control" required>
+                                        <label class="form-label">ระยะเวลาโครงการ (ปี)</label>
+                                        <input type="number" class="form-control" placeholder="เช่น 3">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">วันที่สิ้นสุดโครงการ *</label>
-                                        <input type="date" id="endDate" class="form-control" required>
+                                        <label class="form-label">งบประมาณทั้งหมด (บาท)</label>
+                                        <input type="number" class="form-control" placeholder="เช่น 1000000">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">งบประมาณทั้งหมด (บาท) *</label>
-                                        <input type="number" id="totalBudget" class="form-control" placeholder="0.00" min="0" step="0.01" required>
+                                        <label class="form-label">หน่วยงานดำเนินการ</label>
+                                        <input type="text" class="form-control" placeholder="ชื่อหน่วยงาน">
                                     </div>
                                 </div>
                             </div>
@@ -696,19 +631,12 @@
                             <div class="section">
                                 <h3 class="section-title">ขอบเขตการประเมิน</h3>
                                 <div class="form-group">
-                                    <label class="form-label">ระยะเวลาที่ต้องการประเมินผลกระทบ (ปี) *</label>
-                                    <input type="number" id="evaluationPeriod" class="form-control" value="3" min="1" max="10" required>
-                                    <p style="font-size: 0.85rem; color: var(--color-text-light); margin-top: var(--space-xs); font-family: 'Sarabun', sans-serif;">
-                                        ระบุระยะเวลาที่คาดว่าผลกระทบจะเกิดขึ้น (แนะนำ 3-5 ปี)
-                                    </p>
+                                    <label class="form-label">วัตถุประสงค์โครงการ</label>
+                                    <textarea class="form-control" rows="4" placeholder="อธิบายวัตถุประสงค์หลักของโครงการ"></textarea>
                                 </div>
-                                
                                 <div class="form-group">
-                                    <label class="form-label">ประเภทการประเมิน SROI</label>
-                                    <select id="sroiType" class="form-control">
-                                        <option value="evaluative">Evaluative SROI - ประเมินผลที่เกิดขึ้นแล้ว</option>
-                                        <option value="forecast">Forecast SROI - คาดการณ์ผลในอนาคต</option>
-                                    </select>
+                                    <label class="form-label">กลุ่มเป้าหมาย</label>
+                                    <textarea class="form-control" rows="3" placeholder="ระบุกลุ่มเป้าหมายของโครงการ"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -716,44 +644,30 @@
                         <!-- Step 2: Stakeholders -->
                         <div id="step2" class="step-content">
                             <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 2: ระบุผู้มีส่วนได้ส่วนเสีย (Stakeholders)</h2>
-                                <p class="step-description">ระบุกลุ่มบุคคลหรือองค์กรที่ได้รับผลกระทบจากโครงการ</p>
+                                <h2 class="step-title">ขั้นตอนที่ 2: ระบุผู้มีส่วนได้ส่วนเสีย</h2>
+                                <p class="step-description">กำหนดกลุ่มผู้มีส่วนได้ส่วนเสียที่ได้รับผลกระทบจากโครงการ</p>
                             </div>
                             
                             <div class="section">
-                                <h3 class="section-title">เพิ่มผู้มีส่วนได้ส่วนเสีย</h3>
-                                <div class="grid grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">ชื่อกลุ่ม/บุคคล</label>
-                                        <input type="text" id="stakeholderName" class="form-control" placeholder="เช่น นักเรียน, ครู, ชุมชน">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">จำนวนคน</label>
-                                        <input type="number" id="stakeholderCount" class="form-control" placeholder="จำนวน" min="1">
-                                    </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                                    <h3 class="section-title" style="margin-bottom: 0;">รายชื่อผู้มีส่วนได้ส่วนเสีย</h3>
+                                    <button type="button" class="btn btn-primary" onclick="addStakeholder()">+ เพิ่มผู้มีส่วนได้ส่วนเสีย</button>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">รายละเอียด</label>
-                                    <textarea id="stakeholderDescription" class="form-control" rows="2" placeholder="อธิบายบทบาทและความสัมพันธ์กับโครงการ"></textarea>
-                                </div>
-                                <button type="button" class="btn btn-primary" onclick="addStakeholder()">+ เพิ่มผู้มีส่วนได้ส่วนเสีย</button>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">รายชื่อผู้มีส่วนได้ส่วนเสีย</h3>
+                                
                                 <div class="table-container">
                                     <table class="table">
                                         <thead>
                                             <tr>
                                                 <th>ชื่อกลุ่ม</th>
                                                 <th>จำนวนคน</th>
-                                                <th>รายละเอียด</th>
+                                                <th>ประเภท</th>
+                                                <th>คำอธิบาย</th>
                                                 <th>จัดการ</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="stakeholdersTableBody">
+                                        <tbody id="stakeholderTableBody">
                                             <tr>
-                                                <td colspan="4" style="text-align: center; font-family: 'Sarabun', sans-serif;">ยังไม่มีข้อมูล</td>
+                                                <td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผู้มีส่วนได้ส่วนเสีย" เพื่อเริ่มต้น)</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -764,44 +678,16 @@
                         <!-- Step 3: Outcomes -->
                         <div id="step3" class="step-content">
                             <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 3: ระบุผลลัพธ์ (Outcomes)</h2>
-                                <p class="step-description">ระบุผลลัพธ์ที่เกิดขึ้นกับผู้มีส่วนได้ส่วนเสียแต่ละกลุ่ม</p>
+                                <h2 class="step-title">ขั้นตอนที่ 3: กำหนดผลลัพธ์</h2>
+                                <p class="step-description">ระบุผลลัพธ์ที่เกิดขึ้นกับแต่ละกลุ่มผู้มีส่วนได้ส่วนเสีย</p>
                             </div>
                             
                             <div class="section">
-                                <h3 class="section-title">เพิ่มผลลัพธ์</h3>
-                                <div class="grid grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">เลือกผู้มีส่วนได้ส่วนเสีย</label>
-                                        <select id="outcomeStakeholder" class="form-control">
-                                            <option value="">-- เลือกกลุ่ม --</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">ประเภทมิติ</label>
-                                        <select id="outcomeDimension" class="form-control">
-                                            <option value="economic">เศรษฐกิจ (Economic)</option>
-                                            <option value="social">สังคม (Social)</option>
-                                            <option value="environmental">สิ่งแวดล้อม (Environmental)</option>
-                                        </select>
-                                    </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                                    <h3 class="section-title" style="margin-bottom: 0;">ผลลัพธ์ที่เกิดขึ้น</h3>
+                                    <button type="button" class="btn btn-primary" onclick="addOutcome()">+ เพิ่มผลลัพธ์</button>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label class="form-label">ผลลัพธ์</label>
-                                    <input type="text" id="outcomeName" class="form-control" placeholder="เช่น เพิ่มรายได้, ลดมลพิษ, เพิ่มความรู้">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label class="form-label">คำอธิบาย</label>
-                                    <textarea id="outcomeDescription" class="form-control" rows="2" placeholder="อธิบายผลลัพธ์ที่เกิดขึ้น"></textarea>
-                                </div>
-                                
-                                <button type="button" class="btn btn-primary" onclick="addOutcome()">+ เพิ่มผลลัพธ์</button>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">รายการผลลัพธ์</h3>
                                 <div class="table-container">
                                     <table class="table">
                                         <thead>
@@ -809,13 +695,13 @@
                                                 <th>ผู้มีส่วนได้ส่วนเสีย</th>
                                                 <th>ผลลัพธ์</th>
                                                 <th>ประเภท</th>
-                                                <th>คำอธิบาย</th>
+                                                <th>ตัวชี้วัด</th>
                                                 <th>จัดการ</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="outcomesTableBody">
+                                        <tbody id="outcomeTableBody">
                                             <tr>
-                                                <td colspan="5" style="text-align: center; font-family: 'Sarabun', sans-serif;">ยังไม่มีข้อมูล</td>
+                                                <td colspan="5" style="text-align: center;">ยังไม่มีข้อมูล (คลิก "เพิ่มผลลัพธ์" เพื่อเริ่มต้น)</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -823,114 +709,75 @@
                             </div>
                         </div>
 
-                        <!-- Step 4: Valuation & Calculations -->
+                        <!-- Step 4: Valuation -->
                         <div id="step4" class="step-content">
                             <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 4: การให้มูลค่าและปัจจัยปรับแก้</h2>
-                                <p class="step-description">กำหนดมูลค่าผลลัพธ์และปัจจัยต่างๆ ในการคำนวณ</p>
+                                <h2 class="step-title">ขั้นตอนที่ 4: คำนวณมูลค่าผลลัพธ์</h2>
+                                <p class="step-description">ประเมินมูลค่าทางการเงินของผลลัพธ์แต่ละข้อ</p>
                             </div>
                             
                             <div class="section">
-                                <h3 class="section-title">ให้มูลค่าผลลัพธ์</h3>
-                                <div id="valuationList">
-                                    <p style="color: var(--color-text-light); font-family: 'Sarabun', sans-serif;">กรุณาเพิ่มผลลัพธ์ในขั้นตอนที่ 3 ก่อน</p>
+                                <h3 class="section-title">การกำหนดมูลค่า</h3>
+                                <div class="table-container">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>ผลลัพธ์</th>
+                                                <th>จำนวนหน่วย</th>
+                                                <th>มูลค่าต่อหน่วย (บาท)</th>
+                                                <th>Deadweight (%)</th>
+                                                <th>Attribution (%)</th>
+                                                <th>Displacement (%)</th>
+                                                <th>ระยะเวลา (ปี)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="valuationTableBody">
+                                            <tr>
+                                                <td colspan="7" style="text-align: center;">ยังไม่มีข้อมูล</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                             
                             <div class="section">
-                                <h3 class="section-title">ปัจจัยปรับแก้ค่า</h3>
-                                <div class="grid grid-2">
-                                    <div class="form-group">
-                                        <label class="form-label">อัตราคิดลด (Discount Rate) %</label>
-                                        <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: var(--space-sm); font-family: 'Sarabun', sans-serif;">อัตราที่ใช้คำนวณมูลค่าปัจจุบัน</p>
-                                        <input type="number" id="discountRate" class="form-control" value="3" min="0" max="20" step="0.1">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">อัตราการลดลง (Drop-off Rate) %</label>
-                                        <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: var(--space-sm); font-family: 'Sarabun', sans-serif;">อัตราที่ผลกระทบลดลงในแต่ละปี (ไม่บังคับ)</p>
-                                        <input type="number" id="dropOffRate" class="form-control" value="0" min="0" max="100" step="1">
-                                    </div>
-                                </div>
-                                
-                                <div class="section">
-                                    <h3 class="section-title">สูตรการคำนวณ</h3>
-                                    <div style="background: white; padding: var(--space-md); border-radius: var(--radius-md); font-family: 'Sarabun', sans-serif; font-size: 0.85rem;">
-                                        <div style="margin-bottom: var(--space-md);">
-                                            <strong>ผลกระทบสุทธิ =</strong> มูลค่า × (1 - Deadweight) × (1 - Attribution) × (1 - Displacement)
-                                        </div>
-                                        <div style="margin-bottom: var(--space-md);">
-                                            <strong>มูลค่าปัจจุบัน (PV) =</strong> Σ [ผลกระทบสุทธิ / (1 + อัตราคิดลด)^ปี]
-                                        </div>
-                                        <div style="margin-bottom: var(--space-md);">
-                                            <strong>SROI Ratio =</strong> มูลค่าปัจจุบันของผลประโยชน์ / มูลค่าปัจจุบันของการลงทุน
-                                        </div>
-                                        <div>
-                                            <strong>IRR =</strong> อัตราที่ทำให้ NPV = 0
-                                        </div>
-                                    </div>
-                                </div>
+                                <h3 class="section-title">คำอธิบายปัจจัยปรับค่า</h3>
+                                <ul style="line-height: 2;">
+                                    <li><strong>Deadweight:</strong> ผลลัพธ์ที่จะเกิดขึ้นอยู่แล้วแม้ไม่มีโครงการ</li>
+                                    <li><strong>Attribution:</strong> ส่วนของผลลัพธ์ที่เกิดจากองค์กรอื่นมีส่วนร่วม</li>
+                                    <li><strong>Displacement:</strong> ผลกระทบเชิงลบที่อาจเกิดขึ้นกับกิจกรรมอื่น</li>
+                                </ul>
                             </div>
                         </div>
 
-                        <!-- Step 5: Results & Visualizations -->
+                        <!-- Step 5: Results -->
                         <div id="step5" class="step-content">
                             <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 5: ผลลัพธ์และกราฟ</h2>
-                                <p class="step-description">ผลการคำนวณ SROI และการวิเคราะห์</p>
+                                <h2 class="step-title">ขั้นตอนที่ 5: ผลการคำนวณ SROI</h2>
+                                <p class="step-description">สรุปผลการคำนวณและวิเคราะห์ผลกระทบทางสังคม</p>
                             </div>
                             
-                            <div class="results-grid">
-                                <div class="result-card">
-                                    <div class="result-label">มูลค่าการลงทุนทั้งหมด</div>
-                                    <div class="result-value" id="resultInvestment">฿0</div>
-                                </div>
-                                
-                                <div class="result-card">
-                                    <div class="result-label">มูลค่าผลประโยชน์ (NPV)</div>
-                                    <div class="result-value" id="resultBenefits">฿0</div>
-                                </div>
-                                
-                                <div class="result-card">
-                                    <div class="result-label">มูลค่าปัจจุบันสุทธิ</div>
-                                    <div class="result-value" id="resultNPV">฿0</div>
-                                </div>
-                                
-                                <div class="result-card" style="border-left-color: var(--color-success);">
-                                    <div class="result-label">อัตราส่วน SROI</div>
-                                    <div class="result-value" style="color: var(--color-success);" id="resultSROI">0 : 1</div>
-                                </div>
-                                
-                                <div class="result-card" style="border-left-color: var(--color-secondary);">
-                                    <div class="result-label">IRR</div>
-                                    <div class="result-value" style="color: var(--color-secondary);" id="resultIRR">0%</div>
-                                </div>
-                                
-                                <div class="result-card">
-                                    <div class="result-label">ระยะเวลาคืนทุน</div>
-                                    <div class="result-value" id="resultPayback">0 ปี</div>
+                            <div class="section">
+                                <h3 class="section-title">ผลลัพธ์ SROI</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
+                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">อัตราผลตอบแทน SROI</div>
+                                        <div style="font-size: 2.5rem; font-weight: 700;" id="sroiRatio">0.00 : 1</div>
+                                    </div>
+                                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
+                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">มูลค่าผลกระทบสุทธิ</div>
+                                        <div style="font-size: 2rem; font-weight: 700;" id="netImpact">฿0</div>
+                                    </div>
+                                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
+                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">มูลค่าปัจจุบันรวม (NPV)</div>
+                                        <div style="font-size: 2rem; font-weight: 700;" id="totalNPV">฿0</div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="sroi-display">
-                                <div class="sroi-box">
-                                    <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); color: var(--color-text-light); font-family: 'Sarabun', sans-serif;">มูลค่าปัจจุบันของผลลัพธ์ทั้งหมด</div>
-                                    <div style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary); font-family: 'Sarabun', sans-serif;" id="sroiNumerator">฿0</div>
-                                </div>
+                            <div class="section">
+                                <h3 class="section-title">แผนภูมิวิเคราะห์</h3>
                                 
-                                <div class="sroi-operator">÷</div>
-                                
-                                <div class="sroi-box">
-                                    <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); color: var(--color-text-light); font-family: 'Sarabun', sans-serif;">มูลค่าปัจจุบันของการลงทุนทั้งหมด</div>
-                                    <div style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary); font-family: 'Sarabun', sans-serif;" id="sroiDenominator">฿0</div>
-                                </div>
-                            </div>
-                            
-                            <div class="sroi-result">
-                                <div style="font-size: 2rem; font-weight: 700; margin-bottom: var(--space-sm); font-family: 'Sarabun', sans-serif;" id="sroiResult">0 : 1</div>
-                                <div style="font-size: 1rem; opacity: 0.9; font-family: 'Sarabun', sans-serif;" id="sroiInterpretation">ทุก 1 บาทที่ลงทุน สร้างผลตอบแทนทางสังคม 0 บาท</div>
-                            </div>
-                            
-                            <div class="charts-grid">
                                 <div class="chart-container">
                                     <div class="chart-title">การกระจายผลประโยชน์ตามผู้มีส่วนได้ส่วนเสีย</div>
                                     <div class="chart-canvas">
@@ -979,7 +826,7 @@
                                         </thead>
                                         <tbody id="summaryTableBody">
                                             <tr>
-                                                <td colspan="9" style="text-align: center; font-family: 'Sarabun', sans-serif;">ไม่มีข้อมูล</td>
+                                                <td colspan="9" style="text-align: center;">ไม่มีข้อมูล</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -996,7 +843,7 @@
                             
                             <div class="section">
                                 <h3 class="section-title">รายงานจะประกอบด้วย</h3>
-                                <ul style="line-height: 2; font-family: 'Sarabun', sans-serif;">
+                                <ul style="line-height: 2;">
                                     <li>1. ข้อมูลโครงการและขอบเขตการประเมิน</li>
                                     <li>2. ผู้มีส่วนได้ส่วนเสียและผลลัพธ์</li>
                                     <li>3. แผนที่ผลกระทบ (Impact Map)</li>
@@ -1011,7 +858,7 @@
                                 <button type="button" class="btn btn-success" onclick="generatePDF()" style="font-size: 1.2rem; padding: var(--space-lg) var(--space-2xl);">
                                     📄 สร้างรายงาน PDF
                                 </button>
-                                <p style="margin-top: var(--space-md); color: var(--color-text-light); font-family: 'Sarabun', sans-serif;">คลิกเพื่อสร้างและดาวน์โหลดรายงานเป็นไฟล์ PDF</p>
+                                <p style="margin-top: var(--space-md); color: var(--color-text-light);">คลิกเพื่อสร้างและดาวน์โหลดรายงานเป็นไฟล์ PDF</p>
                             </div>
                         </div>
 
@@ -1025,100 +872,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-    // ========================================
-    // Authentication Functions
-    // ========================================
-    
-    // Toggle between Login and Register forms
-    function toggleForm() {
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        
-        // Clear alerts
-        document.getElementById('loginAlert').innerHTML = '';
-        document.getElementById('registerAlert').innerHTML = '';
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-        }
-    }
-
-    // Show alert message
-    function showAlert(elementId, message, type) {
-        const alertDiv = document.getElementById(elementId);
-        const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-        alertDiv.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
-        
-        // Auto hide after 5 seconds
-        setTimeout(() => {
-            alertDiv.innerHTML = '';
-        }, 5000);
-    }
-
-    // Handle Registration
-    // Show Main App
-    function showMainApp() {
-        const userName = localStorage.getItem('userName');
-        const userEmail = localStorage.getItem('userEmail');
-        
-        if (userName) {
-            document.getElementById('userNameDisplay').textContent = `สวัสดี, ${userName}`;
-        } else if (userEmail) {
-            document.getElementById('userNameDisplay').textContent = `สวัสดี, ${userEmail}`;
-        }
-        
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-    }
-
-    // Check if user is logged in on page load
-    window.addEventListener('DOMContentLoaded', () => {
-        const token = localStorage.getItem('token');
-        
-        if (token) {
-            // User is logged in, show main app
-            showMainApp();
-        } else {
-            // User is not logged in, show auth screen
-            document.getElementById('authScreen').style.display = 'flex';
-            document.getElementById('mainApp').style.display = 'none';
-        }
-    });
-
-    // ========================================
-    // Application Functions (Placeholder)
-    // ========================================
-    
-    // These functions should be implemented in your app.js file
-    function nextStep() {
-        console.log('Next step');
-    }
-    
-    function previousStep() {
-        console.log('Previous step');
-    }
-    
-    function goToStep(stepNumber) {
-        console.log('Go to step:', stepNumber);
-    }
-    
-    function addStakeholder() {
-        console.log('Add stakeholder');
-    }
-    
-    function addOutcome() {
-        console.log('Add outcome');
-    }
-    
-    function generatePDF() {
-        console.log('Generate PDF');
-    }
 
     <!-- Firebase SDK - Initialize FIRST -->
     <script type="module">
