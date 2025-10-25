@@ -1212,7 +1212,8 @@
     }
     </script>
 
-    <script src="app.js"></script>
+
+    <!-- Firebase SDK -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
       import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -1229,8 +1230,9 @@
       const app = initializeApp(firebaseConfig);
       window.auth = getAuth(app);
     </script>
+    
+    <!-- Main App Script -->
     <script src="app.js"></script>
-
     
 </body>
 </html>
