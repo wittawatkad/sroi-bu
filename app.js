@@ -953,10 +953,9 @@ window.calculateSROI = function() {
             yearValue = yearValue * (1 - displacement);
 
             // Apply discount rate
-            const discountFactor = Math.pow(1 + discountRateDecimal, year);
-            const yearNPV = yearValue / discountFactor;
+            const yearPV = yearValue / Math.pow(1 + discountRateDecimal, year);
 
-            npv += yearNPV;
+            npv += yearPV;
         }
 
         totalBenefitNPV += npv;
@@ -965,11 +964,11 @@ window.calculateSROI = function() {
             name: outcome.name,
             quantity: quantity,
             unitValue: unitValue,
-            initialValue: initialValue,
+            initialValue: initialValue * duration,
             deadweight: outcome.deadweight || 0,
             attribution: outcome.attribution || 0,
             displacement: outcome.displacement || 0,
-            netValue: initialValue * (1 - deadweight) * (1 - attribution) * (1 - displacement),
+            netValue: (initialValue * duration) * (1 - deadweight) * (1 - attribution) * (1 - displacement),
             npv: npv
         });
     });
