@@ -961,87 +961,125 @@
 
                         <!-- Step 5: Results -->
                         <div id="step5" class="step-content">
-                            <div class="step-header">
-                                <h2 class="step-title">ขั้นตอนที่ 5: ผลการคำนวณ SROI</h2>
-                                <p class="step-description">สรุปผลการคำนวณและวิเคราะห์ผลกระทบทางสังคม</p>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">ผลลัพธ์ SROI</h3>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
-                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
-                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">อัตราผลตอบแทน SROI</div>
-                                        <div style="font-size: 2.5rem; font-weight: 700;" id="sroiRatio">0.00 : 1</div>
-                                    </div>
-                                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
-                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">มูลค่าผลกระทบสุทธิ</div>
-                                        <div style="font-size: 2rem; font-weight: 700;" id="netImpact">฿0</div>
-                                    </div>
-                                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: var(--space-xl); border-radius: var(--radius-lg); color: white; text-align: center;">
-                                        <div style="font-size: 0.9rem; margin-bottom: var(--space-sm); opacity: 0.9;">มูลค่าปัจจุบันรวม (NPV)</div>
-                                        <div style="font-size: 2rem; font-weight: 700;" id="totalNPV">฿0</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">แผนภูมิวิเคราะห์</h3>
-                                
-                                <div class="chart-container">
-                                    <div class="chart-title">การกระจายผลประโยชน์ตามผู้มีส่วนได้ส่วนเสีย</div>
-                                    <div class="chart-canvas">
-                                        <canvas id="stakeholderChart"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="chart-container">
-                                    <div class="chart-title">การกระจายผลประโยชน์ตามมิติ</div>
-                                    <div class="chart-canvas">
-                                        <canvas id="dimensionChart"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="chart-container">
-                                    <div class="chart-title">เปรียบเทียบมูลค่าผลกระทบ</div>
-                                    <div class="chart-canvas">
-                                        <canvas id="comparisonChart"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="chart-container">
-                                    <div class="chart-title">แนวโน้มมูลค่าตามช่วงเวลา</div>
-                                    <div class="chart-canvas">
-                                        <canvas id="trendChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="section">
-                                <h3 class="section-title">ตารางสรุปผลการคำนวณ</h3>
-                                <div class="table-container">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>ผู้มีส่วนได้ส่วนเสีย</th>
-                                                <th>ผลลัพธ์</th>
-                                                <th>ประเภท</th>
-                                                <th>มูลค่าเริ่มต้น</th>
-                                                <th>Deadweight</th>
-                                                <th>Attribution</th>
-                                                <th>Displacement</th>
-                                                <th>ผลกระทบสุทธิ</th>
-                                                <th>มูลค่าปัจจุบัน</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="summaryTableBody">
-                                            <tr>
-                                                <td colspan="9" style="text-align: center;">ไม่มีข้อมูล</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+    <h2>ขั้นตอนที่ 5: ผลการคำนวณ SROI</h2>
+    <p style="color: #64748b; margin-bottom: 32px;">สรุปผลการคำนวณและเครา่ะห์ผลกระทบทางสังคม</p>
+
+    <!-- Investment Input -->
+    <div style="background: #f1f5f9; padding: 24px; border-radius: 12px; margin-bottom: 32px;">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b;">💰 ต้นทุนการลงทุน</h3>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <label for="investmentAmount" style="font-weight: 500; color: #334155;">ต้นทุนรวมของโครงการ (บาท):</label>
+            <input type="number" 
+                   id="investmentAmount" 
+                   placeholder="0" 
+                   min="0"
+                   style="padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; width: 200px;">
+            <button type="button" 
+                    class="btn btn-primary" 
+                    onclick="calculateSROI()"
+                    style="padding: 12px 32px;">
+                🧮 คำนวณ SROI
+            </button>
+        </div>
+        <small style="color: #64748b; display: block; margin-top: 8px;">
+            กรอกต้นทุนรวมทั้งหมดของโครงการ เพื่อคำนวณอัตราส่วน SROI
+        </small>
+    </div>
+
+    <!-- Results Cards -->
+    <div id="resultsSection" style="display: none;">
+        <h3 style="margin-bottom: 24px;">📊 ผลลัพธ์ SROI</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 32px;">
+            <!-- SROI Ratio Card -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">อัตราผลตอบแทนทาง SROI</div>
+                <div id="sroiRatio" style="font-size: 2.5rem; font-weight: bold;">0.00 : 1</div>
+                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 8px;">
+                    ทุก 1 บาทที่ลงทุน สร้างผลกระทบทางสังคม
+                </div>
+            </div>
+
+            <!-- Investment Card -->
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 24px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">ต้นทุนการลงทุน</div>
+                <div id="investmentDisplay" style="font-size: 2rem; font-weight: bold;">฿0</div>
+                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 8px;">
+                    ต้นทุนรวมของโครงการ
+                </div>
+            </div>
+
+            <!-- Net Impact Card -->
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 24px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">มูลค่าผลกระทบสุทธิ (NPV)</div>
+                <div id="totalNPV" style="font-size: 2rem; font-weight: bold;">฿0</div>
+                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 8px;">
+                    มูลค่าปัจจุบันสุทธิ
+                </div>
+            </div>
+
+            <!-- Social Value Card -->
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 24px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">มูลค่าทางสังคมสุทธิ</div>
+                <div id="netSocialValue" style="font-size: 2rem; font-weight: bold;">฿0</div>
+                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 8px;">
+                    NPV - ต้นทุนลงทุน
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 32px;">
+            <h3 style="margin-bottom: 20px;">📈 กราฟแสดงผลการคำนวณ</h3>
+            <canvas id="sroiChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <!-- Summary Table -->
+        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="margin-bottom: 20px;">📋 ตารางสรุปผลการคำนวณแต่ละผลลัพธ์</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1;">ผู้มีส่วนได้ส่วนเสีย</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1;">ผลลัพธ์</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1;">ประเภท</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">มูลค่าเริ่มต้น</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #cbd5e1;">Deadweight</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #cbd5e1;">Attribution</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #cbd5e1;">Displacement</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">มูลค่าสุทธิ</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">NPV</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                กรุณากรอกต้นทุนและกดปุ่ม "คำนวณ SROI"
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="margin-top: 32px; display: flex; gap: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+            ← ย้อนกลับ
+        </button>
+        <button type="button" class="btn btn-success" onclick="nextStep()">
+            ถัดไป: สร้างรายงาน →
+        </button>
+        <button type="button" class="btn" style="background: #10b981; color: white; margin-left: auto;" onclick="generatePDF()">
+            📄 ดาวน์โหลด PDF
+        </button>
+    </div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
                         <!-- Step 6: Generate Report -->
                         <div id="step6" class="step-content">
