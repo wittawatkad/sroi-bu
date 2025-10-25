@@ -15,7 +15,7 @@ window.openModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        document.body.style.overflow = 'hidden';
     }
 };
 
@@ -23,9 +23,8 @@ window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('show');
-        document.body.style.overflow = 'auto'; // Restore scrolling
+        document.body.style.overflow = 'auto';
         
-        // Clear form
         const form = modal.querySelector('form');
         if (form) {
             form.reset();
@@ -33,7 +32,6 @@ window.closeModal = function(modalId) {
     }
 };
 
-// Close modal when clicking outside
 window.addEventListener('click', function(event) {
     if (event.target.classList.contains('modal')) {
         closeModal(event.target.id);
@@ -71,14 +69,12 @@ window.goToStep = function(stepNumber) {
 function updateStep() {
     console.log('Updating to step:', currentStep);
     
-    // Hide all step contents
     const allSteps = document.querySelectorAll('.step-content');
     allSteps.forEach(content => {
         content.classList.remove('active');
         content.style.display = 'none';
     });
     
-    // Show current step content
     const currentContent = document.getElementById(`step${currentStep}`);
     if (currentContent) {
         currentContent.classList.add('active');
@@ -88,7 +84,6 @@ function updateStep() {
         console.error('Step element not found:', `step${currentStep}`);
     }
     
-    // Update step navigation buttons
     const stepButtons = document.querySelectorAll('.step');
     stepButtons.forEach((step, index) => {
         if (index + 1 === currentStep) {
@@ -98,7 +93,6 @@ function updateStep() {
         }
     });
     
-    // Update navigation buttons
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     
@@ -114,7 +108,17 @@ function updateStep() {
         }
     }
     
-    // Scroll to top
+    // Update tables based on current step
+    if (currentStep === 2) {
+        updateStakeholderTable();
+    } else if (currentStep === 3) {
+        updateOutcomeTable();
+    } else if (currentStep === 4) {
+        updateValuationTable();
+    } else if (currentStep === 5) {
+        calculateAndShowResults();
+    }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -150,7 +154,6 @@ window.saveStakeholder = function() {
     updateOutcomeStakeholderOptions();
     closeModal('stakeholderModal');
     
-    // Show success message
     showToast('✅ เพิ่มผู้มีส่วนได้ส่วนเสียสำเร็จ!');
 };
 
@@ -225,7 +228,13 @@ window.saveOutcome = function() {
         stakeholder: stakeholder,
         name: name,
         type: type,
-        indicator: indicator
+        indicator: indicator,
+        quantity: 0,
+        unitValue: 0,
+        deadweight: 0,
+        attribution: 0,
+        displacement: 0,
+        duration: 1
     };
     
     outcomes.push(outcome);
@@ -268,11 +277,173 @@ function updateOutcomeTable() {
 }
 
 // ========================================
+// VALUATION FUNCTIONS (STEP 4)
+// ========================================
+
+function updateValuationTable() {
+    const tbody = document.getElementById('valuationTableBody');
+    if (!tbody) return;
+    
+    if (outcomes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;"><div style="font-size: 1.2rem; margin-bottom: 8px;">📋 ยังไม่มีผลลัพธ์</div><div>กรุณากลับไปขั้นตอนที่ 3 เพื่อเพิ่มผลลัพธ์ก่อน</div></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = outcomes.map(outcome => `
+        <tr>
+            <td style="font-weight: 500;">${outcome.name}</td>
+            <td>
+                <input type="number" 
+                       id="quantity_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 120px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="0"
+                       min="0"
+                       value="${outcome.quantity || ''}"
+                       onchange="saveValuation(${outcome.id}, 'quantity', this.value)">
+            </td>
+            <td>
+                <input type="number" 
+                       id="unitValue_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 120px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="0"
+                       min="0"
+                       value="${outcome.unitValue || ''}"
+                       onchange="saveValuation(${outcome.id}, 'unitValue', this.value)">
+            </td>
+            <td>
+                <input type="number" 
+                       id="deadweight_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="0"
+                       min="0"
+                       max="100"
+                       value="${outcome.deadweight || ''}"
+                       onchange="saveValuation(${outcome.id}, 'deadweight', this.value)">
+            </td>
+            <td>
+                <input type="number" 
+                       id="attribution_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="0"
+                       min="0"
+                       max="100"
+                       value="${outcome.attribution || ''}"
+                       onchange="saveValuation(${outcome.id}, 'attribution', this.value)">
+            </td>
+            <td>
+                <input type="number" 
+                       id="displacement_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="0"
+                       min="0"
+                       max="100"
+                       value="${outcome.displacement || ''}"
+                       onchange="saveValuation(${outcome.id}, 'displacement', this.value)">
+            </td>
+            <td>
+                <input type="number" 
+                       id="duration_${outcome.id}" 
+                       class="form-control" 
+                       style="width: 100px; padding: 8px; font-size: 0.95rem;"
+                       placeholder="1"
+                       min="1"
+                       value="${outcome.duration || 1}"
+                       onchange="saveValuation(${outcome.id}, 'duration', this.value)">
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.saveValuation = function(outcomeId, field, value) {
+    const outcome = outcomes.find(o => o.id === outcomeId);
+    if (outcome) {
+        outcome[field] = parseFloat(value) || 0;
+        console.log(`Saved ${field} = ${outcome[field]} for outcome:`, outcome.name);
+    }
+};
+
+// ========================================
+// CALCULATION FUNCTIONS (STEP 5)
+// ========================================
+
+function calculateAndShowResults() {
+    if (outcomes.length === 0) {
+        return;
+    }
+    
+    let totalValue = 0;
+    let results = [];
+    
+    outcomes.forEach(outcome => {
+        // Calculate impact value
+        const initialValue = (outcome.quantity || 0) * (outcome.unitValue || 0);
+        const deadweightFactor = 1 - ((outcome.deadweight || 0) / 100);
+        const attributionFactor = 1 - ((outcome.attribution || 0) / 100);
+        const displacementFactor = 1 - ((outcome.displacement || 0) / 100);
+        
+        const netImpact = initialValue * deadweightFactor * attributionFactor * displacementFactor;
+        
+        // Calculate NPV (simplified - should use discount rate)
+        const duration = outcome.duration || 1;
+        const npv = netImpact * duration;
+        
+        totalValue += npv;
+        
+        results.push({
+            outcome: outcome,
+            initialValue: initialValue,
+            netImpact: netImpact,
+            npv: npv
+        });
+    });
+    
+    // Update summary cards
+    const sroiRatio = document.getElementById('sroiRatio');
+    const netImpactEl = document.getElementById('netImpact');
+    const totalNPV = document.getElementById('totalNPV');
+    
+    if (sroiRatio) sroiRatio.textContent = '0.00 : 1'; // Needs investment amount
+    if (netImpactEl) netImpactEl.textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    if (totalNPV) totalNPV.textContent = '฿' + totalValue.toLocaleString('th-TH', {maximumFractionDigits: 0});
+    
+    // Update summary table
+    updateSummaryTable(results);
+}
+
+function updateSummaryTable(results) {
+    const tbody = document.getElementById('summaryTableBody');
+    if (!tbody) return;
+    
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">ไม่มีข้อมูล</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = results.map(r => `
+        <tr>
+            <td>${r.outcome.stakeholder}</td>
+            <td>${r.outcome.name}</td>
+            <td>${r.outcome.type}</td>
+            <td>฿${r.initialValue.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
+            <td>${r.outcome.deadweight || 0}%</td>
+            <td>${r.outcome.attribution || 0}%</td>
+            <td>${r.outcome.displacement || 0}%</td>
+            <td>฿${r.netImpact.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
+            <td>฿${r.npv.toLocaleString('th-TH', {maximumFractionDigits: 0})}</td>
+        </tr>
+    `).join('');
+}
+
+// ========================================
 // TOAST NOTIFICATION
 // ========================================
 
 function showToast(message) {
-    // Create toast element
     const toast = document.createElement('div');
     toast.innerHTML = message;
     toast.style.cssText = `
@@ -291,7 +462,6 @@ function showToast(message) {
     
     document.body.appendChild(toast);
     
-    // Remove after 3 seconds
     setTimeout(() => {
         toast.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => {
@@ -300,7 +470,6 @@ function showToast(message) {
     }, 3000);
 }
 
-// Add animations for toast
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideInRight {
