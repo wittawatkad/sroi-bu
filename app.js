@@ -8,10 +8,42 @@ let outcomes = [];
 let valuations = [];
 
 // ========================================
+// MODAL FUNCTIONS
+// ========================================
+
+window.openModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    }
+};
+
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto'; // Restore scrolling
+        
+        // Clear form
+        const form = modal.querySelector('form');
+        if (form) {
+            form.reset();
+        }
+    }
+};
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal')) {
+        closeModal(event.target.id);
+    }
+});
+
+// ========================================
 // STEP NAVIGATION FUNCTIONS
 // ========================================
 
-// Make functions globally available immediately
 window.nextStep = function() {
     console.log('nextStep called, current:', currentStep);
     if (currentStep < totalSteps) {
@@ -91,33 +123,43 @@ function updateStep() {
 // ========================================
 
 window.addStakeholder = function() {
-    const name = prompt('ชื่อกลุ่มผู้มีส่วนได้ส่วนเสีย:');
-    if (!name) return;
+    openModal('stakeholderModal');
+};
+
+window.saveStakeholder = function() {
+    const name = document.getElementById('stakeholderName').value.trim();
+    const count = document.getElementById('stakeholderCount').value;
+    const type = document.getElementById('stakeholderType').value;
+    const description = document.getElementById('stakeholderDescription').value.trim();
     
-    const count = prompt('จำนวนคน:');
-    if (!count) return;
-    
-    const type = prompt('ประเภท (เช่น ผู้รับผลประโยชน์โดยตรง):');
-    if (!type) return;
-    
-    const description = prompt('คำอธิบาย:');
+    if (!name || !count || !type) {
+        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
+        return;
+    }
     
     const stakeholder = {
         id: Date.now(),
         name: name,
         count: parseInt(count),
         type: type,
-        description: description || ''
+        description: description
     };
     
     stakeholders.push(stakeholder);
     updateStakeholderTable();
+    updateOutcomeStakeholderOptions();
+    closeModal('stakeholderModal');
+    
+    // Show success message
+    showToast('✅ เพิ่มผู้มีส่วนได้ส่วนเสียสำเร็จ!');
 };
 
 window.deleteStakeholder = function(id) {
     if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
         stakeholders = stakeholders.filter(s => s.id !== id);
         updateStakeholderTable();
+        updateOutcomeStakeholderOptions();
+        showToast('✅ ลบข้อมูลสำเร็จ');
     }
 };
 
@@ -133,12 +175,12 @@ function updateStakeholderTable() {
     tbody.innerHTML = stakeholders.map(s => `
         <tr>
             <td>${s.name}</td>
-            <td>${s.count}</td>
-            <td>${s.type}</td>
-            <td>${s.description}</td>
+            <td>${s.count.toLocaleString()}</td>
+            <td><span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${s.type}</span></td>
+            <td>${s.description || '-'}</td>
             <td>
-                <button type="button" class="btn btn-danger" style="padding: 4px 12px; font-size: 0.85rem;" onclick="deleteStakeholder(${s.id})">
-                    ลบ
+                <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteStakeholder(${s.id})">
+                    🗑️ ลบ
                 </button>
             </td>
         </tr>
@@ -151,37 +193,53 @@ function updateStakeholderTable() {
 
 window.addOutcome = function() {
     if (stakeholders.length === 0) {
-        alert('กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
+        alert('❌ กรุณาเพิ่มผู้มีส่วนได้ส่วนเสียก่อน');
         return;
     }
     
-    const stakeholderName = prompt('เลือกผู้มีส่วนได้ส่วนเสีย:\n' + stakeholders.map((s, i) => `${i + 1}. ${s.name}`).join('\n'));
-    if (!stakeholderName) return;
+    updateOutcomeStakeholderOptions();
+    openModal('outcomeModal');
+};
+
+function updateOutcomeStakeholderOptions() {
+    const select = document.getElementById('outcomeStakeholder');
+    if (!select) return;
     
-    const outcomeName = prompt('ชื่อผลลัพธ์:');
-    if (!outcomeName) return;
+    select.innerHTML = '<option value="">-- เลือก --</option>' +
+        stakeholders.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+}
+
+window.saveOutcome = function() {
+    const stakeholder = document.getElementById('outcomeStakeholder').value;
+    const name = document.getElementById('outcomeName').value.trim();
+    const type = document.getElementById('outcomeType').value;
+    const indicator = document.getElementById('outcomeIndicator').value.trim();
     
-    const type = prompt('ประเภท (เช่น ผลกระทบเชิงบวก):');
-    if (!type) return;
-    
-    const indicator = prompt('ตัวชี้วัด:');
+    if (!stakeholder || !name || !type || !indicator) {
+        alert('❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน');
+        return;
+    }
     
     const outcome = {
         id: Date.now(),
-        stakeholder: stakeholderName,
-        name: outcomeName,
+        stakeholder: stakeholder,
+        name: name,
         type: type,
-        indicator: indicator || ''
+        indicator: indicator
     };
     
     outcomes.push(outcome);
     updateOutcomeTable();
+    closeModal('outcomeModal');
+    
+    showToast('✅ เพิ่มผลลัพธ์สำเร็จ!');
 };
 
 window.deleteOutcome = function(id) {
     if (confirm('คุณต้องการลบข้อมูลนี้หรือไม่?')) {
         outcomes = outcomes.filter(o => o.id !== id);
         updateOutcomeTable();
+        showToast('✅ ลบข้อมูลสำเร็จ');
     }
 };
 
@@ -198,16 +256,75 @@ function updateOutcomeTable() {
         <tr>
             <td>${o.stakeholder}</td>
             <td>${o.name}</td>
-            <td>${o.type}</td>
+            <td><span style="background: ${o.type === 'ผลกระทบเชิงบวก' ? '#d1fae5' : '#fee2e2'}; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">${o.type}</span></td>
             <td>${o.indicator}</td>
             <td>
-                <button type="button" class="btn btn-danger" style="padding: 4px 12px; font-size: 0.85rem;" onclick="deleteOutcome(${o.id})">
-                    ลบ
+                <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteOutcome(${o.id})">
+                    🗑️ ลบ
                 </button>
             </td>
         </tr>
     `).join('');
 }
+
+// ========================================
+// TOAST NOTIFICATION
+// ========================================
+
+function showToast(message) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.innerHTML = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-family: 'Sarabun', sans-serif;
+        font-weight: 500;
+        animation: slideInRight 0.3s ease;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+// Add animations for toast
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // ========================================
 // PDF GENERATION
@@ -224,7 +341,6 @@ window.generatePDF = function() {
 function initializeAuth() {
     console.log('Initializing authentication...');
     
-    // Helper function to show alerts
     window.showAlert = function(elementId, message, type = 'error') {
         const alertElement = document.getElementById(elementId);
         if (alertElement) {
@@ -242,13 +358,11 @@ function initializeAuth() {
         }
     };
 
-    // Handle Registration with Firebase
     window.handleRegister = async function(event) {
         event.preventDefault();
         
         const name = document.getElementById('registerName').value.trim();
         const email = document.getElementById('registerEmail').value.trim();
-        const organization = document.getElementById('registerOrganization').value.trim();
         const password = generatePassword();
         
         if (!name || !email) {
@@ -265,11 +379,7 @@ function initializeAuth() {
             const { createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
             
             const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
-            
-            await updateProfile(userCredential.user, {
-                displayName: name
-            });
-            
+            await updateProfile(userCredential.user, { displayName: name });
             await sendPasswordResetEmail(window.auth, email);
             
             showAlert('registerAlert', `✅ สมัครสมาชิกสำเร็จ! อีเมลสำหรับตั้งรหัสผ่านได้ถูกส่งไปยัง ${email} แล้ว`, 'success');
@@ -278,21 +388,16 @@ function initializeAuth() {
             document.getElementById('registerEmail').value = '';
             document.getElementById('registerOrganization').value = '';
             
-            setTimeout(() => {
-                toggleForm();
-            }, 3000);
+            setTimeout(() => toggleForm(), 3000);
             
         } catch (error) {
             console.error('Registration Error:', error);
-            
             let errorMessage = '❌ เกิดข้อผิดพลาดในการสมัครสมาชิก';
             
             if (error.code === 'auth/email-already-in-use') {
-                errorMessage = '❌ อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น';
+                errorMessage = '❌ อีเมลนี้ถูกใช้งานแล้ว';
             } else if (error.code === 'auth/invalid-email') {
                 errorMessage = '❌ รูปแบบอีเมลไม่ถูกต้อง';
-            } else if (error.code === 'auth/operation-not-allowed') {
-                errorMessage = '❌ ระบบยังไม่เปิดให้สมัครสมาชิก กรุณาติดต่อผู้ดูแลระบบ';
             }
             
             showAlert('registerAlert', errorMessage, 'error');
@@ -302,7 +407,6 @@ function initializeAuth() {
         }
     };
 
-    // Handle Login with Firebase
     window.handleLogin = async function(event) {
         event.preventDefault();
         
@@ -329,23 +433,11 @@ function initializeAuth() {
             localStorage.setItem('userName', userCredential.user.displayName || email);
             localStorage.setItem('userEmail', userCredential.user.email);
             
-            setTimeout(() => {
-                showMainApp();
-            }, 500);
+            setTimeout(() => showMainApp(), 500);
             
         } catch (error) {
             console.error('Login Error:', error);
-            
-            let errorMessage = '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
-            
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                errorMessage = '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = '❌ รูปแบบอีเมลไม่ถูกต้อง';
-            } else if (error.code === 'auth/user-disabled') {
-                errorMessage = '❌ บัญชีนี้ถูกระงับการใช้งาน';
-            }
-            
+            let errorMessage = '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง';
             showAlert('loginAlert', errorMessage, 'error');
         } finally {
             submitBtn.innerHTML = originalText;
@@ -353,7 +445,6 @@ function initializeAuth() {
         }
     };
 
-    // Handle Google Sign-in
     window.handleGoogleSignIn = async function() {
         try {
             const { GoogleAuthProvider, signInWithPopup } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
@@ -366,43 +457,30 @@ function initializeAuth() {
             
             showAlert('loginAlert', '✅ เข้าสู่ระบบด้วย Google สำเร็จ!', 'success');
             
-            setTimeout(() => {
-                showMainApp();
-            }, 500);
+            setTimeout(() => showMainApp(), 500);
             
         } catch (error) {
             console.error('Google Sign-in Error:', error);
-            
-            let errorMessage = '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google';
-            
-            if (error.code === 'auth/popup-closed-by-user') {
-                errorMessage = '❌ คุณได้ปิดหน้าต่างการเข้าสู่ระบบ';
-            } else if (error.code === 'auth/cancelled-popup-request') {
-                return;
+            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                showAlert('loginAlert', '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google', 'error');
             }
-            
-            showAlert('loginAlert', errorMessage, 'error');
         }
     };
 
-    // Handle Logout
     window.handleLogout = function() {
         if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
             window.auth.signOut().then(() => {
-                localStorage.removeItem('userName');
-                localStorage.removeItem('userEmail');
-                
+                localStorage.clear();
                 document.getElementById('authScreen').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
-                
-                // Reset to step 1
                 currentStep = 1;
+                stakeholders = [];
+                outcomes = [];
                 updateStep();
             });
         }
     };
 
-    // Show Main App
     window.showMainApp = function() {
         const userName = localStorage.getItem('userName');
         const userNameDisplay = document.getElementById('userNameDisplay');
@@ -414,19 +492,14 @@ function initializeAuth() {
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         
-        // Initialize step 1
         currentStep = 1;
-        setTimeout(() => {
-            updateStep();
-        }, 100);
+        setTimeout(() => updateStep(), 100);
     };
 
-    // Toggle between login and register forms
     window.toggleForm = function() {
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
         
-        // Clear alerts
         const loginAlert = document.getElementById('loginAlert');
         const registerAlert = document.getElementById('registerAlert');
         if (loginAlert) loginAlert.innerHTML = '';
@@ -441,7 +514,6 @@ function initializeAuth() {
         }
     };
 
-    // Generate random password
     function generatePassword(length = 12) {
         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
         let password = '';
@@ -451,7 +523,6 @@ function initializeAuth() {
         return password;
     }
 
-    // Check authentication status
     if (window.auth) {
         window.auth.onAuthStateChanged((user) => {
             if (user) {
@@ -465,17 +536,15 @@ function initializeAuth() {
         });
     }
     
-    console.log('✅ SROI-BU Application initialized with Firebase Authentication');
+    console.log('✅ SROI-BU Application initialized');
 }
 
 // ========================================
 // INITIALIZE APP
 // ========================================
 
-// Initialize immediately
 console.log('App.js loaded');
 
-// Wait for Firebase to be ready
 if (window.auth) {
     initializeAuth();
 } else {
@@ -484,17 +553,10 @@ if (window.auth) {
     });
 }
 
-// Initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM ready, initializing step');
-        setTimeout(() => {
-            updateStep();
-        }, 100);
+        setTimeout(() => updateStep(), 100);
     });
 } else {
-    console.log('DOM already ready, initializing step');
-    setTimeout(() => {
-        updateStep();
-    }, 100);
+    setTimeout(() => updateStep(), 100);
 }
